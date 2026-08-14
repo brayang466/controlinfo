@@ -25,6 +25,7 @@
           <select id="mesSelect" aria-label="Seleccionar mes"></select>
         </label>
         <button type="button" id="btnRecargar" class="btn-ghost">Actualizar</button>
+        <button type="button" id="btnVerificarMes" class="btn-ghost">Verificar mes</button>
         <button type="button" id="btnCatalogos" class="btn-ghost">Empleados y turnos</button>
         <button type="button" id="btnPrecargar" class="btn-solid">Precargar 2026</button>
       </div>
@@ -46,7 +47,7 @@
 
   <!-- Modal día hábil -->
   <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
       <form class="modal-content glass-modal" id="editForm">
         <div class="modal-header">
           <div>
@@ -60,12 +61,14 @@
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label" for="editHoraInicio">Hora inicio de proceso</label>
-              <select class="form-select" id="editHoraInicio" required></select>
+              <input type="hidden" id="editHoraInicio" required />
+              <div class="clock-picker" id="clockInicio" aria-label="Reloj hora de inicio"></div>
             </div>
             <div class="col-md-6">
               <label class="form-label" for="editHoraFin">Hora finalización</label>
-              <select class="form-select" id="editHoraFin" required></select>
-              <div class="form-text">Puede ser el mismo día o madrugada del día siguiente (hasta 6:00 AM).</div>
+              <input type="hidden" id="editHoraFin" required />
+              <div class="clock-picker" id="clockFin" aria-label="Reloj hora de finalización"></div>
+              <div class="form-text">Puede ser el mismo día o madrugada del día siguiente (hasta 6:00 AM). Arrastra la manecilla o toca el dial; usa Hora / Min / Seg.</div>
             </div>
             <div class="col-12">
               <div class="calc-board" id="calcBoard" aria-live="polite">
@@ -81,8 +84,9 @@
                 <div class="calc-cell green total" id="calcTotal">0</div>
               </div>
               <p class="calc-legend">
-                Duración = fin − inicio · Si termina de madrugada (00:00–06:00) se cuenta el día siguiente ·
-                Minutos = (horas × 60) + minutos restantes
+                Duración = fin − inicio (incluye segundos en la visualización) ·
+                Si termina de madrugada se cuenta el día siguiente ·
+                Minutos de producción = (horas × 60) + minutos
               </p>
             </div>
             <div class="col-md-4">
@@ -130,7 +134,7 @@
   <!-- Modal horario semanal -->
   <div class="modal fade" id="semanaModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-xl">
-      <form class="modal-content glass-modal" id="semanaForm">
+      <form class="modal-content glass-modal" id="semanaForm" novalidate>
         <div class="modal-header">
           <div>
             <h2 class="modal-title" id="semanaTitle">Horario semanal</h2>
@@ -140,18 +144,40 @@
         </div>
         <div class="modal-body">
           <input type="hidden" id="semanaFechaInicio" />
-          <p class="hint-line">Un mismo empleado puede tener varios turnos. El sábado se configura aparte; el domingo no se trabaja.</p>
+          <div id="semanaAlertBox" class="ui-alert d-none" role="alert"></div>
+          <p class="hint-line" id="semanaHint">
+            Un mismo empleado puede tener varios turnos. El sábado se configura aparte; el domingo no se trabaja.
+            Si eliges un turno de sábado en lun–vie (o al revés), verás un aviso y no se permitirá.
+          </p>
+          <div class="semana-clipboard-bar">
+            <button type="button" class="btn-ghost" id="btnCopiarSemana">Copiar semana</button>
+            <button type="button" class="btn-ghost" id="btnPegarSemana" disabled>Pegar semana</button>
+            <p class="hint-line mb-0" id="semanaClipboardMeta">Sin horario copiado</p>
+          </div>
 
-          <h3 class="section-label">Lunes a viernes</h3>
-          <div id="asignacionesList" class="asignaciones-list"></div>
-          <button type="button" id="btnAddAsignacion" class="btn-ghost mt-2 mb-3">+ Agregar (lun–vie)</button>
+          <div id="bloqueLunVie">
+            <h3 class="section-label">Lunes a viernes</h3>
+            <div id="asignacionesList" class="asignaciones-list"></div>
+            <button type="button" id="btnAddAsignacion" class="btn-ghost mt-2 mb-3">+ Agregar (lun–vie)</button>
+          </div>
 
-          <h3 class="section-label">Sábado</h3>
-          <div id="asignacionesSabadoList" class="asignaciones-list"></div>
-          <button type="button" id="btnAddAsignacionSabado" class="btn-ghost mt-2">+ Agregar (sábado)</button>
+          <div id="bloqueSabado">
+            <h3 class="section-label">Sábado</h3>
+            <div id="asignacionesSabadoList" class="asignaciones-list"></div>
+            <button type="button" id="btnAddAsignacionSabado" class="btn-ghost mt-2 mb-3">+ Agregar (sábado)</button>
+          </div>
+
+          <h3 class="section-label">Enviar a grupo de WhatsApp (prueba)</h3>
+          <div class="wa-send-row">
+            <p class="hint-line mb-0">
+              Se abrirá WhatsApp con un <strong>mensaje de prueba</strong> y el contenido de horarios.
+              Elige el <strong>grupo</strong> y pulsa Enviar. No se usa un número individual.
+            </p>
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn-whatsapp" id="btnEnviarWhatsApp">Enviar a grupo WhatsApp</button>
           <button type="submit" class="btn-solid">Guardar semana</button>
         </div>
       </form>
@@ -192,6 +218,51 @@
               <ul id="listaTurnos" class="catalog-list"></ul>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal verificación del mes -->
+  <div class="modal fade" id="verificarMesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+      <div class="modal-content glass-modal">
+        <div class="modal-header">
+          <div>
+            <h2 class="modal-title" id="verificarMesTitle">Verificación del mes</h2>
+            <p id="verificarMesMeta" class="modal-sub"></p>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div id="verificarMesResumen" class="verify-summary"></div>
+          <div id="verificarMesDetalle" class="verify-detail"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-solid" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alertas diseñadas -->
+  <div id="uiToastHost" class="ui-toast-host" aria-live="polite" aria-relevant="additions"></div>
+  <div class="modal fade" id="uiAlertModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content glass-modal ui-alert-modal">
+        <div class="modal-header">
+          <div class="ui-alert-heading">
+            <span class="ui-alert-icon" id="uiAlertIcon" aria-hidden="true"></span>
+            <h2 class="modal-title" id="uiAlertTitle">Aviso</h2>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <p id="uiAlertMessage" class="ui-alert-message"></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-ghost d-none" id="uiAlertCancel" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn-solid" id="uiAlertOk">Entendido</button>
         </div>
       </div>
     </div>

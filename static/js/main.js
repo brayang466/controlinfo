@@ -3,9 +3,14 @@
   const btnRecargar = document.getElementById("btnRecargar");
   const btnPrecargar = document.getElementById("btnPrecargar");
   const btnCatalogos = document.getElementById("btnCatalogos");
+  const btnVerificarMes = document.getElementById("btnVerificarMes");
   const statusBar = document.getElementById("statusBar");
   const headerRow = document.getElementById("headerRow");
   const bodyRows = document.getElementById("bodyRows");
+  const verificarMesTitle = document.getElementById("verificarMesTitle");
+  const verificarMesMeta = document.getElementById("verificarMesMeta");
+  const verificarMesResumen = document.getElementById("verificarMesResumen");
+  const verificarMesDetalle = document.getElementById("verificarMesDetalle");
 
   const editForm = document.getElementById("editForm");
   const editTitle = document.getElementById("editTitle");
@@ -30,6 +35,25 @@
   const asignacionesSabadoList = document.getElementById("asignacionesSabadoList");
   const btnAddAsignacion = document.getElementById("btnAddAsignacion");
   const btnAddAsignacionSabado = document.getElementById("btnAddAsignacionSabado");
+  const btnEnviarWhatsApp = document.getElementById("btnEnviarWhatsApp");
+  const btnCopiarSemana = document.getElementById("btnCopiarSemana");
+  const btnPegarSemana = document.getElementById("btnPegarSemana");
+  const semanaClipboardMeta = document.getElementById("semanaClipboardMeta");
+  const bloqueLunVie = document.getElementById("bloqueLunVie");
+  const bloqueSabado = document.getElementById("bloqueSabado");
+  const semanaAlertBox = document.getElementById("semanaAlertBox");
+  const semanaHint = document.getElementById("semanaHint");
+  const uiToastHost = document.getElementById("uiToastHost");
+  const uiAlertTitle = document.getElementById("uiAlertTitle");
+  const uiAlertMessage = document.getElementById("uiAlertMessage");
+  const uiAlertIcon = document.getElementById("uiAlertIcon");
+  const uiAlertOk = document.getElementById("uiAlertOk");
+  const uiAlertCancel = document.getElementById("uiAlertCancel");
+  const uiAlertModalEl = document.getElementById("uiAlertModal");
+  const HORARIO_CLIPBOARD_KEY = "controlparadas_horario_semana";
+
+  let uiAlertResolver = null;
+  let confirmarGuardadoVacio = false;
 
   const formNuevoEmpleado = document.getElementById("formNuevoEmpleado");
   const formNuevoTurno = document.getElementById("formNuevoTurno");
@@ -45,6 +69,10 @@
   const modalDia = new bootstrap.Modal(document.getElementById("editModal"));
   const modalSemana = new bootstrap.Modal(document.getElementById("semanaModal"));
   const modalCatalogo = new bootstrap.Modal(document.getElementById("catalogoModal"));
+  const modalVerificarMes = new bootstrap.Modal(
+    document.getElementById("verificarMesModal")
+  );
+  const modalUiAlert = new bootstrap.Modal(uiAlertModalEl);
 
   const MESES = [
     "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -70,7 +98,82 @@
   function setStatus(msg, isError = false) {
     statusBar.textContent = msg || "";
     statusBar.classList.toggle("error", Boolean(isError));
+    statusBar.classList.toggle("ok", Boolean(msg) && !isError);
   }
+
+  function mostrarToast(mensaje, tipo = "ok", titulo = "") {
+    if (!uiToastHost) return;
+    const toast = document.createElement("div");
+    toast.className = `ui-toast ${tipo}`;
+    const icon = tipo === "error" ? "!" : tipo === "warn" ? "i" : "✓";
+    const title =
+      titulo ||
+      (tipo === "error" ? "Revisa el formulario" : tipo === "warn" ? "Atención" : "Listo");
+    toast.innerHTML = `
+      <span class="ui-toast-badge">${icon}</span>
+      <div>
+        <strong>${title}</strong>
+        <p>${mensaje}</p>
+      </div>
+      <button type="button" class="ui-toast-close" aria-label="Cerrar">×</button>
+    `;
+    const close = () => toast.remove();
+    toast.querySelector(".ui-toast-close").addEventListener("click", close);
+    uiToastHost.appendChild(toast);
+    setTimeout(close, tipo === "error" ? 6500 : 4200);
+  }
+
+  function mostrarAlertaSemana(mensaje, tipo = "error") {
+    if (!semanaAlertBox) return;
+    semanaAlertBox.className = `ui-alert ${tipo}`;
+    semanaAlertBox.textContent = mensaje;
+    semanaAlertBox.classList.remove("d-none");
+  }
+
+  function limpiarAlertaSemana() {
+    if (!semanaAlertBox) return;
+    semanaAlertBox.className = "ui-alert d-none";
+    semanaAlertBox.textContent = "";
+  }
+
+  function mostrarAlerta(mensaje, tipo = "error", titulo = "") {
+    return new Promise((resolve) => {
+      uiAlertResolver = resolve;
+      uiAlertModalEl.classList.remove("error", "warn", "ok");
+      uiAlertModalEl.classList.add(tipo);
+      uiAlertIcon.textContent = tipo === "error" ? "!" : tipo === "warn" ? "i" : "✓";
+      uiAlertTitle.textContent =
+        titulo ||
+        (tipo === "error" ? "No se puede continuar" : tipo === "warn" ? "Confirmación" : "Listo");
+      uiAlertMessage.textContent = mensaje;
+      uiAlertCancel.classList.toggle("d-none", tipo !== "warn");
+      uiAlertOk.textContent = tipo === "warn" ? "Continuar" : "Entendido";
+      modalUiAlert.show();
+    });
+  }
+
+  uiAlertOk.addEventListener("click", () => {
+    modalUiAlert.hide();
+    if (uiAlertResolver) {
+      const done = uiAlertResolver;
+      uiAlertResolver = null;
+      done(true);
+    }
+  });
+  uiAlertCancel.addEventListener("click", () => {
+    if (uiAlertResolver) {
+      const done = uiAlertResolver;
+      uiAlertResolver = null;
+      done(false);
+    }
+  });
+  uiAlertModalEl.addEventListener("hidden.bs.modal", () => {
+    if (uiAlertResolver) {
+      const done = uiAlertResolver;
+      uiAlertResolver = null;
+      done(false);
+    }
+  });
 
   function pad2(n) {
     return String(n).padStart(2, "0");
@@ -87,16 +190,6 @@
     return `${h}:${pad2(m)} ${ampm}`;
   }
 
-  function buildMinuteTimes() {
-    const list = [];
-    for (let h = 0; h < 24; h += 1) {
-      for (let m = 0; m < 60; m += 1) {
-        list.push(`${pad2(h)}:${pad2(m)}`);
-      }
-    }
-    return list;
-  }
-
   function buildShiftTimes() {
     const list = [];
     for (let h = 5; h <= 23; h += 1) {
@@ -107,7 +200,6 @@
     return list;
   }
 
-  const PROCESS_TIMES = buildMinuteTimes();
   const SHIFT_TIMES = buildShiftTimes();
 
   function fillSelect(select, values, placeholder, selected = "") {
@@ -125,56 +217,210 @@
     }
   }
 
-  function minutosDe(hhmm) {
-    if (!hhmm) return null;
-    const [h, m] = hhmm.split(":").map(Number);
-    return h * 60 + m;
+  function normalizeTime(value, fallback = "00:00:00") {
+    if (!value && value !== 0) return fallback;
+    const parts = String(value).trim().split(":");
+    if (parts.length === 2) {
+      return `${pad2(Number(parts[0]) || 0)}:${pad2(Number(parts[1]) || 0)}:00`;
+    }
+    if (parts.length >= 3) {
+      return `${pad2(Number(parts[0]) || 0)}:${pad2(Number(parts[1]) || 0)}:${pad2(Number(parts[2]) || 0)}`;
+    }
+    return fallback;
   }
 
-  function esMadrugada(hhmm) {
-    const mins = minutosDe(hhmm);
-    return mins !== null && mins <= 6 * 60; // 00:00 … 06:00
+  function parseTimeParts(hhmmss) {
+    const norm = normalizeTime(hhmmss, "00:00:00");
+    const [h, m, s] = norm.split(":").map(Number);
+    return { h, m, s, text: norm };
   }
 
-  /** Lista de fin: mismo día + madrugada (+1) hasta 6:00 AM + resto del día siguiente si aplica */
-  function fillHoraFinSelect(selected = "", inicio = "") {
-    const iniMins = minutosDe(inicio);
-    editHoraFin.innerHTML = "";
-    const ph = document.createElement("option");
-    ph.value = "";
-    ph.textContent = "Fin…";
-    editHoraFin.appendChild(ph);
+  function segundosDe(hhmmss) {
+    if (!hhmmss) return null;
+    const { h, m, s } = parseTimeParts(hhmmss);
+    if ([h, m, s].some((n) => Number.isNaN(n))) return null;
+    return h * 3600 + m * 60 + s;
+  }
 
-    const grupoMismo = document.createElement("optgroup");
-    grupoMismo.label = "Mismo día";
-    const grupoMadrugada = document.createElement("optgroup");
-    grupoMadrugada.label = "Madrugada (día siguiente, hasta 6:00 AM)";
-    const grupoOtro = document.createElement("optgroup");
-    grupoOtro.label = "Otras horas (día siguiente)";
+  function minutosDe(hhmmss) {
+    const secs = segundosDe(hhmmss);
+    return secs === null ? null : Math.floor(secs / 60);
+  }
 
-    for (const v of PROCESS_TIMES) {
-      const finMins = minutosDe(v);
-      const opt = document.createElement("option");
-      opt.value = v;
+  function esMadrugada(hhmmss) {
+    const mins = minutosDe(hhmmss);
+    return mins !== null && mins <= 6 * 60;
+  }
 
-      if (iniMins === null || finMins >= iniMins) {
-        opt.textContent = v;
-        grupoMismo.appendChild(opt);
-      } else if (esMadrugada(v)) {
-        opt.textContent = `${v} · madrugada (+1 día)`;
-        grupoMadrugada.appendChild(opt);
-      } else {
-        opt.textContent = `${v} · día siguiente`;
-        grupoOtro.appendChild(opt);
-      }
+  function createClockPicker(root, hiddenInput, onChange) {
+    let hour = 0;
+    let minute = 0;
+    let second = 0;
+    let mode = "h";
+    let dragging = false;
 
-      if (String(v) === String(selected)) opt.selected = true;
+    root.innerHTML = `
+      <div class="clock-digital">
+        <button type="button" data-mode="h" data-part="h">00</button>
+        <span class="sep">:</span>
+        <button type="button" data-mode="m" data-part="m">00</button>
+        <span class="sep">:</span>
+        <button type="button" data-mode="s" data-part="s">00</button>
+      </div>
+      <div class="clock-modes">
+        <button type="button" data-mode="h">Hora</button>
+        <button type="button" data-mode="m">Min</button>
+        <button type="button" data-mode="s">Seg</button>
+      </div>
+      <div class="clock-face-wrap">
+        <div class="clock-face" tabindex="0" role="slider" aria-label="Dial de tiempo">
+          <div class="ticks"></div>
+          <div class="hand"></div>
+          <div class="pivot"></div>
+        </div>
+      </div>
+      <p class="clock-hint">Arrastra o toca el círculo · cambia entre Hora / Min / Seg</p>
+    `;
+
+    const btnH = root.querySelector('[data-part="h"]');
+    const btnM = root.querySelector('[data-part="m"]');
+    const btnS = root.querySelector('[data-part="s"]');
+    const face = root.querySelector(".clock-face");
+    const ticks = root.querySelector(".ticks");
+    const hand = root.querySelector(".hand");
+    const modeButtons = root.querySelectorAll("[data-mode]");
+
+    function currentValue() {
+      return `${pad2(hour)}:${pad2(minute)}:${pad2(second)}`;
     }
 
-    if (grupoMismo.children.length) editHoraFin.appendChild(grupoMismo);
-    if (grupoMadrugada.children.length) editHoraFin.appendChild(grupoMadrugada);
-    if (grupoOtro.children.length) editHoraFin.appendChild(grupoOtro);
+    function syncHidden() {
+      hiddenInput.value = currentValue();
+    }
+
+    function setMode(next) {
+      mode = next;
+      modeButtons.forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.mode === mode);
+      });
+      renderTicks();
+      renderHand();
+    }
+
+    function renderDigital() {
+      btnH.textContent = pad2(hour);
+      btnM.textContent = pad2(minute);
+      btnS.textContent = pad2(second);
+    }
+
+    function activeValue() {
+      if (mode === "h") return hour;
+      if (mode === "m") return minute;
+      return second;
+    }
+
+    function maxForMode() {
+      return mode === "h" ? 24 : 60;
+    }
+
+    function renderTicks() {
+      ticks.innerHTML = "";
+      const max = maxForMode();
+      const step = mode === "h" ? 2 : 5;
+      const radius = 42;
+      for (let v = 0; v < max; v += step) {
+        const angle = (v / max) * 360;
+        const rad = ((angle - 90) * Math.PI) / 180;
+        const x = 50 + radius * Math.cos(rad);
+        const y = 50 + radius * Math.sin(rad);
+        const tick = document.createElement("div");
+        tick.className = "tick";
+        tick.textContent = pad2(v);
+        tick.style.left = `${x}%`;
+        tick.style.top = `${y}%`;
+        ticks.appendChild(tick);
+      }
+    }
+
+    function renderHand() {
+      const max = maxForMode();
+      const val = activeValue();
+      const angle = (val / max) * 360;
+      hand.style.transform = `rotate(${angle}deg)`;
+    }
+
+    function commit(nextHour, nextMinute, nextSecond, emit = true) {
+      hour = ((nextHour % 24) + 24) % 24;
+      minute = ((nextMinute % 60) + 60) % 60;
+      second = ((nextSecond % 60) + 60) % 60;
+      renderDigital();
+      renderHand();
+      syncHidden();
+      if (emit && typeof onChange === "function") onChange();
+    }
+
+    function valueFromPointer(clientX, clientY) {
+      const rect = face.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      let deg = (Math.atan2(clientY - cy, clientX - cx) * 180) / Math.PI + 90;
+      if (deg < 0) deg += 360;
+      const max = maxForMode();
+      let val = Math.round((deg / 360) * max) % max;
+      return val;
+    }
+
+    function applyPointer(clientX, clientY, emit) {
+      const val = valueFromPointer(clientX, clientY);
+      if (mode === "h") commit(val, minute, second, emit);
+      else if (mode === "m") commit(hour, val, second, emit);
+      else commit(hour, minute, val, emit);
+    }
+
+    root.querySelectorAll("[data-mode]").forEach((btn) => {
+      btn.addEventListener("click", () => setMode(btn.dataset.mode));
+    });
+
+    face.addEventListener("pointerdown", (ev) => {
+      dragging = true;
+      face.setPointerCapture(ev.pointerId);
+      applyPointer(ev.clientX, ev.clientY, true);
+    });
+    face.addEventListener("pointermove", (ev) => {
+      if (!dragging) return;
+      applyPointer(ev.clientX, ev.clientY, true);
+    });
+    face.addEventListener("pointerup", () => {
+      dragging = false;
+    });
+    face.addEventListener("pointercancel", () => {
+      dragging = false;
+    });
+
+    setMode("h");
+    commit(0, 0, 0, false);
+
+    return {
+      setValue(value) {
+        const parts = parseTimeParts(value);
+        commit(parts.h, parts.m, parts.s, false);
+      },
+      getValue() {
+        return currentValue();
+      },
+    };
   }
+
+  const clockInicio = createClockPicker(
+    document.getElementById("clockInicio"),
+    editHoraInicio,
+    () => actualizarCalculoProduccion()
+  );
+  const clockFin = createClockPicker(
+    document.getElementById("clockFin"),
+    editHoraFin,
+    () => actualizarCalculoProduccion()
+  );
 
   function calcPorcentaje(parada, produccion) {
     const p = Number(parada) || 0;
@@ -192,22 +438,25 @@
 
   /**
    * Fórmula de la planilla:
-   * duración = fin - inicio → H:MM
+   * duración = fin - inicio → H:MM:SS
    * minutos_produccion = (H * 60) + MM
    */
   function calcMinutosProduccion(inicio, fin) {
     if (!inicio || !fin) return null;
-    let ini = minutosDe(inicio);
-    let end = minutosDe(fin);
+    let ini = segundosDe(inicio);
+    let end = segundosDe(fin);
+    if (ini === null || end === null) return null;
     const cruzaMedianoche = end < ini;
-    if (cruzaMedianoche) end += 24 * 60;
+    if (cruzaMedianoche) end += 24 * 3600;
     const diff = end - ini;
-    const horas = Math.floor(diff / 60);
-    const mins = diff % 60;
+    const horas = Math.floor(diff / 3600);
+    const mins = Math.floor((diff % 3600) / 60);
+    const secs = diff % 60;
     return {
-      duracion: `${horas}:${pad2(mins)}`,
+      duracion: `${horas}:${pad2(mins)}:${pad2(secs)}`,
       horas,
       mins,
+      secs,
       producto: horas * 60,
       total: horas * 60 + mins,
       cruzaMedianoche,
@@ -241,6 +490,11 @@
     editPorcentaje.value = formatPct(
       calcPorcentaje(editParada.value, editProduccion.value)
     );
+  }
+
+  function poblarSelectoresProceso(selectedInicio = "15:00:00", selectedFin = "22:08:00") {
+    clockInicio.setValue(normalizeTime(selectedInicio, "15:00:00"));
+    clockFin.setValue(normalizeTime(selectedFin, "22:08:00"));
   }
 
   /** Evita desfase UTC: fecha ISO + mediodía local */
@@ -289,11 +543,6 @@
     fillSelect(nuevoTurFin, [...SHIFT_TIMES, "F.P"], "Hora fin…");
   }
 
-  function poblarSelectoresProceso(selectedInicio = "15:00", selectedFin = "22:08") {
-    fillSelect(editHoraInicio, PROCESS_TIMES, "Inicio…", selectedInicio);
-    fillHoraFinSelect(selectedFin, selectedInicio || editHoraInicio.value);
-  }
-
   function poblarResponsables(selected = "") {
     const nombres = [
       ...new Set((estado.empleados || []).map((e) => (e.nombre || "").toUpperCase())),
@@ -326,6 +575,117 @@
     } catch (err) {
       setStatus(err.message, true);
     }
+  }
+
+  function tieneProduccion(col) {
+    return Number(col.minutos_produccion || 0) > 0;
+  }
+
+  function tieneHorarioPersonal(col) {
+    return Boolean(String(col.detalle_horario || "").trim());
+  }
+
+  function verificarMesActual() {
+    const cols = estado.columnas || [];
+    const habiles = cols.filter((col) => !esEspecial(col));
+    const pendientesProduccion = [];
+    const pendientesHorario = [];
+    const pendientesAmbos = [];
+
+    for (const col of habiles) {
+      const okProd = tieneProduccion(col);
+      const okHor = tieneHorarioPersonal(col);
+      if (okProd && okHor) continue;
+      const item = {
+        etiqueta: col.etiqueta,
+        fecha: col.fecha,
+        faltaProduccion: !okProd,
+        faltaHorario: !okHor,
+      };
+      if (!okProd && !okHor) pendientesAmbos.push(item);
+      else if (!okProd) pendientesProduccion.push(item);
+      else pendientesHorario.push(item);
+    }
+
+    const totalPendientes =
+      pendientesProduccion.length +
+      pendientesHorario.length +
+      pendientesAmbos.length;
+    const completos = habiles.length - totalPendientes;
+    const mesNombre = estado.mes_nombre || MESES[estado.mes] || "Mes";
+    const anio = estado.anio || 2026;
+
+    verificarMesTitle.textContent = `Verificación · ${mesNombre} ${anio}`;
+    verificarMesMeta.textContent =
+      "Días hábiles (excluye festivos y domingos) · Minutos de producción y Horarios del personal";
+
+    verificarMesResumen.className =
+      "verify-summary" + (totalPendientes ? " incomplete" : "");
+    if (!habiles.length) {
+      verificarMesResumen.innerHTML =
+        "<p class=\"verify-warn\">No hay días hábiles cargados en este mes.</p>";
+      verificarMesDetalle.innerHTML = "";
+    } else if (!totalPendientes) {
+      verificarMesResumen.innerHTML = `
+        <p class="verify-ok">Todos los días hábiles están completos</p>
+        <p>${completos} de ${habiles.length} días con minutos de producción y horarios del personal.</p>
+      `;
+      verificarMesDetalle.innerHTML = "";
+      setStatus(`${mesNombre}: mes completo (${completos} días hábiles)`);
+    } else {
+      verificarMesResumen.innerHTML = `
+        <p class="verify-warn">Hay días pendientes</p>
+        <p>${completos} completos · ${totalPendientes} pendientes · ${habiles.length} hábiles en total</p>
+      `;
+      verificarMesDetalle.innerHTML = renderPendientesVerificacion({
+        pendientesAmbos,
+        pendientesProduccion,
+        pendientesHorario,
+      });
+      setStatus(
+        `${mesNombre}: ${totalPendientes} día(s) pendiente(s) de ${habiles.length} hábiles`,
+        true
+      );
+    }
+
+    modalVerificarMes.show();
+  }
+
+  function renderListaPendientes(titulo, items, tagsFn) {
+    if (!items.length) return "";
+    const lis = items
+      .map((item) => {
+        const tags = tagsFn(item)
+          .map((t) => `<span class="tag">${t}</span>`)
+          .join("");
+        return `<li><strong>${item.etiqueta}</strong> <small>(${item.fecha})</small>${tags}</li>`;
+      })
+      .join("");
+    return `<h3>${titulo}</h3><ul>${lis}</ul>`;
+  }
+
+  function renderPendientesVerificacion({
+    pendientesAmbos,
+    pendientesProduccion,
+    pendientesHorario,
+  }) {
+    return [
+      renderListaPendientes(
+        "Falta producción y horario",
+        pendientesAmbos,
+        () => ["Producción", "Horario"]
+      ),
+      renderListaPendientes(
+        "Falta minutos de producción",
+        pendientesProduccion,
+        () => ["Producción"]
+      ),
+      renderListaPendientes(
+        "Falta horarios del personal",
+        pendientesHorario,
+        () => ["Horario"]
+      ),
+    ].join("");
   }
 
   function renderTabla() {
@@ -533,8 +893,8 @@
     if (col.es_festivo) flags.push(col.descripcion_festivo || "Festivo");
     editMeta.textContent = `${col.fecha}${flags.length ? " · " + flags.join(" · ") : ""}`;
 
-    const ini = col.hora_inicio_proceso || "15:00";
-    const fin = col.hora_fin_proceso || "22:08";
+    const ini = col.hora_inicio_proceso || "15:00:00";
+    const fin = col.hora_fin_proceso || "22:08:00";
     poblarSelectoresProceso(ini, fin);
     poblarResponsables(col.responsable_proceso || "");
 
@@ -558,21 +918,124 @@
       .join("");
   }
 
-  function renderAsignacionRow(container, asig = {}) {
+  function esTurnoSoloSabado(texto) {
+    const t = String(texto || "").toLowerCase();
+    return /sabad/.test(t) || /festivo/.test(t);
+  }
+
+  function esTurnoSoloEntreSemana(texto) {
+    const t = String(texto || "").toLowerCase();
+    return (
+      /lun[\s\-–]*vie/.test(t) ||
+      /entre\s*semana/.test(t) ||
+      /entre-semana/.test(t)
+    );
+  }
+
+  function turnoPorId(turnoId) {
+    return (estado.turnos || []).find((t) => String(t.id) === String(turnoId));
+  }
+
+  function textoTurno(turnoId, selectEl) {
+    const tur = turnoPorId(turnoId);
+    if (tur) return `${tur.nombre || ""} ${tur.etiqueta || ""}`;
+    return selectEl ? textoOpcionSelect(selectEl) : "";
+  }
+
+  function avisoTurnoEnAmbitoIncorrecto(ambito, turnoTexto) {
+    if (ambito === "lun_vie" && esTurnoSoloSabado(turnoTexto)) {
+      return "Ese turno es de sábado. No se puede asignar en lunes a viernes.";
+    }
+    if (ambito === "sabado" && esTurnoSoloEntreSemana(turnoTexto)) {
+      return "Ese turno es de entre semana. No se puede asignar en sábado.";
+    }
+    return "";
+  }
+
+  function validarCruceAmbitos() {
+    for (const row of asignacionesList.querySelectorAll(".asig-row")) {
+      const turSel = row.querySelector(".tur-select");
+      if (!turSel.value) continue;
+      const msg = avisoTurnoEnAmbitoIncorrecto(
+        "lun_vie",
+        textoTurno(turSel.value, turSel)
+      );
+      if (msg) {
+        row.classList.add("incomplete");
+        return msg;
+      }
+    }
+    for (const row of asignacionesSabadoList.querySelectorAll(".asig-row")) {
+      const turSel = row.querySelector(".tur-select");
+      if (!turSel.value) continue;
+      const msg = avisoTurnoEnAmbitoIncorrecto(
+        "sabado",
+        textoTurno(turSel.value, turSel)
+      );
+      if (msg) {
+        row.classList.add("incomplete");
+        return msg;
+      }
+    }
+    return "";
+  }
+
+  function renderAsignacionRow(container, asig = {}, ambito = "lun_vie") {
     const row = document.createElement("div");
     row.className = "asig-row";
+    row.dataset.ambito = ambito;
     row.innerHTML = `
-      <select class="form-select emp-select" required>
+      <select class="form-select emp-select">
         <option value="">Empleado…</option>
         ${optionList(estado.empleados || [], "id", "etiqueta", asig.empleado_id)}
       </select>
-      <select class="form-select tur-select" required>
+      <select class="form-select tur-select">
         <option value="">Turno de trabajo…</option>
         ${optionList(estado.turnos || [], "id", "etiqueta", asig.turno_id)}
       </select>
       <button type="button" class="icon-action danger btn-remove">Quitar</button>
     `;
+    const empSel = row.querySelector(".emp-select");
+    const turSel = row.querySelector(".tur-select");
+    const syncIncomplete = () => {
+      const emp = empSel.value;
+      const tur = turSel.value;
+      const incompleta = Boolean((emp && !tur) || (!emp && tur));
+      row.classList.toggle("incomplete", incompleta);
+    };
+    turSel.addEventListener("change", () => {
+      if (!turSel.value) {
+        syncIncomplete();
+        return;
+      }
+      const aviso = avisoTurnoEnAmbitoIncorrecto(
+        ambito,
+        textoTurno(turSel.value, turSel)
+      );
+      if (aviso) {
+        turSel.value = "";
+        row.classList.add("incomplete");
+        mostrarAlertaSemana(aviso, "error");
+        mostrarToast(aviso, "error", "Aviso");
+        syncIncomplete();
+        return;
+      }
+      limpiarAlertaSemana();
+      syncIncomplete();
+    });
+    empSel.addEventListener("change", syncIncomplete);
     row.querySelector(".btn-remove").addEventListener("click", () => row.remove());
+    syncIncomplete();
+    if (asig.turno_id) {
+      const aviso = avisoTurnoEnAmbitoIncorrecto(
+        ambito,
+        textoTurno(asig.turno_id, turSel)
+      );
+      if (aviso) {
+        turSel.value = "";
+        row.classList.add("incomplete");
+      }
+    }
     container.appendChild(row);
   }
 
@@ -587,10 +1050,100 @@
     return out;
   }
 
+  function textoOpcionSelect(select) {
+    const opt = select.options[select.selectedIndex];
+    return opt ? String(opt.textContent || "").trim() : "";
+  }
+
+  function leerAsignacionesTexto(container) {
+    const out = [];
+    for (const row of container.querySelectorAll(".asig-row")) {
+      const empSel = row.querySelector(".emp-select");
+      const turSel = row.querySelector(".tur-select");
+      if (!empSel.value || !turSel.value) continue;
+      out.push({
+        empleado: textoOpcionSelect(empSel),
+        turno: textoOpcionSelect(turSel),
+      });
+    }
+    return out;
+  }
+
+  function esTurnoPlantaTexto(texto) {
+    const blob = String(texto || "").toLowerCase();
+    return blob.includes("planta") || blob.replace(/\s+/g, "").includes("f.p");
+  }
+
+  function responsableDesdeAsignaciones(items) {
+    const hit = items.find((a) => esTurnoPlantaTexto(a.turno));
+    return hit ? String(hit.empleado || "").trim().toUpperCase() : "";
+  }
+
+  function formatearLineasAsignacion(items) {
+    if (!items.length) return ["(sin asignaciones)"];
+    return items.map((a) => `- ${a.empleado} → ${a.turno}`);
+  }
+
+  function construirMensajeHorariosWhatsApp() {
+    const lunVie = leerAsignacionesTexto(asignacionesList);
+    const sabado = leerAsignacionesTexto(asignacionesSabadoList);
+    const rango = (semanaMeta.textContent || "").trim();
+    const fechaInicio = semanaFechaInicio.value || "";
+    const responsable =
+      responsableDesdeAsignaciones(lunVie) ||
+      responsableDesdeAsignaciones(sabado);
+
+    const lineas = [
+      "*Mensaje de prueba*",
+      "",
+      "*Horarios del personal*",
+      rango || (fechaInicio ? "Semana desde " + fechaInicio : "Semana"),
+      "",
+      "*Lunes a viernes*",
+      ...formatearLineasAsignacion(lunVie),
+      "",
+      "*Sábado*",
+      ...formatearLineasAsignacion(sabado),
+    ];
+    if (responsable) {
+      lineas.push("", "*Responsable del proceso:* " + responsable);
+    }
+    return lineas.join("\n");
+  }
+
+  function enviarHorariosPorWhatsApp() {
+    limpiarAlertaSemana();
+    const lunVie = leerAsignacionesTexto(asignacionesList);
+    const sabado = leerAsignacionesTexto(asignacionesSabadoList);
+    if (!lunVie.length && !sabado.length) {
+      const msg =
+        "Completa al menos una asignación antes de enviar por WhatsApp.";
+      mostrarAlertaSemana(msg, "error");
+      mostrarToast(msg, "error", "WhatsApp");
+      return;
+    }
+
+    const mensaje = construirMensajeHorariosWhatsApp();
+    const url = "https://wa.me/?text=" + encodeURIComponent(mensaje);
+    window.open(url, "_blank", "noopener,noreferrer");
+    mostrarToast("WhatsApp abierto · elige el grupo y pulsa Enviar", "ok");
+    setStatus("WhatsApp abierto · elige el grupo y pulsa Enviar");
+  }
+
   function abrirEditorSemana(semana) {
+    confirmarGuardadoVacio = false;
+    limpiarAlertaSemana();
+
     semanaFechaInicio.value = semana.fecha_inicio;
     semanaTitle.textContent = "Horario semanal";
-    semanaMeta.textContent = `Lunes ${semana.fecha_inicio} → Domingo ${semana.fecha_fin}`;
+    semanaMeta.textContent =
+      "Lunes " + semana.fecha_inicio + " → Domingo " + semana.fecha_fin;
+    semanaHint.textContent =
+      "Un mismo empleado puede tener varios turnos. No uses turnos de sábado en lun–vie ni turnos de entre semana en sábado.";
+
+    bloqueLunVie.classList.remove("d-none");
+    bloqueSabado.classList.remove("d-none");
+
     asignacionesList.innerHTML = "";
     asignacionesSabadoList.innerHTML = "";
 
@@ -598,13 +1151,198 @@
       (semana.asignaciones_lun_vie || semana.asignaciones || []).length
         ? semana.asignaciones_lun_vie || semana.asignaciones
         : [{}];
-    itemsLv.forEach((a) => renderAsignacionRow(asignacionesList, a));
+    itemsLv.forEach((a) => renderAsignacionRow(asignacionesList, a, "lun_vie"));
 
     const itemsSab =
       (semana.asignaciones_sabado || []).length ? semana.asignaciones_sabado : [{}];
-    itemsSab.forEach((a) => renderAsignacionRow(asignacionesSabadoList, a));
+    itemsSab.forEach((a) => renderAsignacionRow(asignacionesSabadoList, a, "sabado"));
 
+    actualizarEstadoPortapapelesSemana();
     modalSemana.show();
+  }
+
+  function leerPortapapelesSemana() {
+    try {
+      const raw = localStorage.getItem(HORARIO_CLIPBOARD_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (!data || typeof data !== "object") return null;
+      return {
+        asignaciones_lun_vie: Array.isArray(data.asignaciones_lun_vie)
+          ? data.asignaciones_lun_vie
+          : Array.isArray(data.asignaciones) && data.ambito === "lun_vie"
+            ? data.asignaciones
+            : [],
+        asignaciones_sabado: Array.isArray(data.asignaciones_sabado)
+          ? data.asignaciones_sabado
+          : Array.isArray(data.asignaciones) && data.ambito === "sabado"
+            ? data.asignaciones
+            : [],
+        origen: data.origen || "",
+      };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function actualizarEstadoPortapapelesSemana() {
+    const clip = leerPortapapelesSemana();
+    const tiene =
+      clip &&
+      (clip.asignaciones_lun_vie.length > 0 || clip.asignaciones_sabado.length > 0);
+    btnPegarSemana.disabled = !tiene;
+    if (!tiene) {
+      semanaClipboardMeta.textContent = "Sin horario copiado";
+      return;
+    }
+    const origen = clip.origen ? " · origen " + clip.origen : "";
+    semanaClipboardMeta.textContent =
+      "Portapapeles: " +
+      clip.asignaciones_lun_vie.length +
+      " lun–vie · " +
+      clip.asignaciones_sabado.length +
+      " sábado" +
+      origen;
+  }
+
+  function filtrarAsignacionesValidas(items) {
+    const empIds = new Set((estado.empleados || []).map((e) => Number(e.id)));
+    const turIds = new Set((estado.turnos || []).map((t) => Number(t.id)));
+    const out = [];
+    let omitidas = 0;
+    for (const item of items || []) {
+      const emp = Number(item.empleado_id);
+      const tur = Number(item.turno_id);
+      if (!emp || !tur || !empIds.has(emp) || !turIds.has(tur)) {
+        omitidas += 1;
+        continue;
+      }
+      out.push({ empleado_id: emp, turno_id: tur });
+    }
+    return { items: out, omitidas };
+  }
+
+  function renderAsignacionesEn(container, items, ambito) {
+    container.innerHTML = "";
+    const lista = items && items.length ? items : [{}];
+    lista.forEach((a) => renderAsignacionRow(container, a, ambito));
+  }
+
+  function validarFilasAsignacion(container) {
+    const incompletas = [];
+    for (const row of container.querySelectorAll(".asig-row")) {
+      const emp = row.querySelector(".emp-select").value;
+      const tur = row.querySelector(".tur-select").value;
+      const incompleta = Boolean((emp && !tur) || (!emp && tur));
+      row.classList.toggle("incomplete", incompleta);
+      if (incompleta) incompletas.push(row);
+    }
+    return incompletas;
+  }
+
+  function copiarHorarioSemana() {
+    limpiarAlertaSemana();
+    const incompletas = [
+      ...validarFilasAsignacion(asignacionesList),
+      ...validarFilasAsignacion(asignacionesSabadoList),
+    ];
+    if (incompletas.length) {
+      const msg =
+        "Hay filas incompletas (empleado sin turno o turno sin empleado). Complétalas o quítalas antes de copiar.";
+      mostrarAlertaSemana(msg, "error");
+      mostrarToast(msg, "error", "No se pudo copiar");
+      return;
+    }
+    const cruce = validarCruceAmbitos();
+    if (cruce) {
+      mostrarAlertaSemana(cruce, "error");
+      mostrarToast(cruce, "error", "Horario incorrecto");
+      return;
+    }
+    const asignaciones_lun_vie = leerAsignaciones(asignacionesList);
+    const asignaciones_sabado = leerAsignaciones(asignacionesSabadoList);
+    if (!asignaciones_lun_vie.length && !asignaciones_sabado.length) {
+      const msg = "No hay asignaciones para copiar.";
+      mostrarAlertaSemana(msg, "warn");
+      mostrarToast(msg, "warn", "Nada para copiar");
+      return;
+    }
+    const payload = {
+      asignaciones_lun_vie,
+      asignaciones_sabado,
+      origen: semanaFechaInicio.value || "",
+      copiado_en: new Date().toISOString(),
+    };
+    try {
+      localStorage.setItem(HORARIO_CLIPBOARD_KEY, JSON.stringify(payload));
+    } catch (_) {
+      const msg = "No se pudo guardar el horario en el portapapeles del navegador.";
+      mostrarAlertaSemana(msg, "error");
+      mostrarToast(msg, "error");
+      return;
+    }
+    actualizarEstadoPortapapelesSemana();
+    const ok =
+      "Horario copiado · " +
+      asignaciones_lun_vie.length +
+      " lun–vie · " +
+      asignaciones_sabado.length +
+      " sábado";
+    mostrarAlertaSemana(ok, "ok");
+    mostrarToast(ok, "ok", "Copiado");
+    setStatus(ok);
+  }
+
+  function pegarHorarioSemana() {
+    limpiarAlertaSemana();
+    const clip = leerPortapapelesSemana();
+    if (
+      !clip ||
+      (!clip.asignaciones_lun_vie.length && !clip.asignaciones_sabado.length)
+    ) {
+      const msg = "No hay un horario copiado para pegar.";
+      mostrarAlertaSemana(msg, "warn");
+      mostrarToast(msg, "warn");
+      actualizarEstadoPortapapelesSemana();
+      return;
+    }
+
+    const lv = filtrarAsignacionesValidas(clip.asignaciones_lun_vie);
+    const sab = filtrarAsignacionesValidas(clip.asignaciones_sabado);
+    if (!lv.items.length && !sab.items.length) {
+      const msg =
+        "El horario copiado no tiene empleados/turnos válidos en el catálogo actual.";
+      mostrarAlertaSemana(msg, "error");
+      mostrarToast(msg, "error");
+      return;
+    }
+
+    renderAsignacionesEn(asignacionesList, lv.items, "lun_vie");
+    renderAsignacionesEn(asignacionesSabadoList, sab.items, "sabado");
+
+    const cruce = validarCruceAmbitos();
+    if (cruce) {
+      mostrarAlertaSemana(cruce, "warn");
+      mostrarToast(cruce, "warn", "Revisa turnos");
+    }
+
+    const omitidas = lv.omitidas + sab.omitidas;
+    const base =
+      "Horario pegado · " +
+      lv.items.length +
+      " lun–vie · " +
+      sab.items.length +
+      " sábado · recuerda Guardar semana";
+    if (omitidas) {
+      const msg = base + " · se omitieron " + omitidas + " inválidas";
+      mostrarAlertaSemana(msg, "warn");
+      mostrarToast(msg, "warn", "Pegado con omisiones");
+      setStatus(msg, true);
+    } else {
+      mostrarAlertaSemana(base, "ok");
+      mostrarToast(base, "ok", "Pegado");
+      setStatus(base);
+    }
   }
 
   async function guardarDia(event) {
@@ -639,8 +1377,43 @@
 
   async function guardarSemana(event) {
     event.preventDefault();
+    limpiarAlertaSemana();
+
+    const incompletas = [
+      ...validarFilasAsignacion(asignacionesList),
+      ...validarFilasAsignacion(asignacionesSabadoList),
+    ];
+    if (incompletas.length) {
+      const msg =
+        "Hay filas incompletas: cada fila debe tener empleado y turno, o quítala.";
+      mostrarAlertaSemana(msg, "error");
+      mostrarToast(msg, "error", "Validación");
+      return;
+    }
+
+    const cruce = validarCruceAmbitos();
+    if (cruce) {
+      mostrarAlertaSemana(cruce, "error");
+      mostrarToast(cruce, "error", "Horario incorrecto");
+      return;
+    }
+
     const asignaciones_lun_vie = leerAsignaciones(asignacionesList);
     const asignaciones_sabado = leerAsignaciones(asignacionesSabadoList);
+
+    if (
+      !asignaciones_lun_vie.length &&
+      !asignaciones_sabado.length &&
+      !confirmarGuardadoVacio
+    ) {
+      const msg =
+        "Vas a guardar la semana sin asignaciones (se borrarán). Pulsa Guardar otra vez para confirmar.";
+      confirmarGuardadoVacio = true;
+      mostrarAlertaSemana(msg, "warn");
+      mostrarToast(msg, "warn", "Confirmación");
+      return;
+    }
+    confirmarGuardadoVacio = false;
 
     setStatus("Guardando semana…");
     try {
@@ -654,14 +1427,14 @@
       });
       modalSemana.hide();
       await cargarReporte();
-      if (res.responsable_proceso) {
-        setStatus(
-          `Semana guardada · Responsable del proceso: ${res.responsable_proceso}`
-        );
-      } else {
-        setStatus("Horario semanal guardado");
-      }
+      const okMsg = res.responsable_proceso
+        ? "Semana guardada · Responsable del proceso: " + res.responsable_proceso
+        : "Horario semanal guardado";
+      mostrarToast(okMsg, "ok", "Guardado");
+      setStatus(okMsg);
     } catch (err) {
+      mostrarAlertaSemana(err.message, "error");
+      mostrarToast(err.message, "error", "Error al guardar");
       setStatus(err.message, true);
     }
   }
@@ -818,12 +1591,6 @@
     }
   });
 
-  editHoraInicio.addEventListener("change", () => {
-    const finActual = editHoraFin.value;
-    fillHoraFinSelect(finActual, editHoraInicio.value);
-    actualizarCalculoProduccion();
-  });
-  editHoraFin.addEventListener("change", actualizarCalculoProduccion);
   editParada.addEventListener("input", () => {
     editPorcentaje.value = formatPct(
       calcPorcentaje(editParada.value, editProduccion.value)
@@ -836,12 +1603,27 @@
   editForm.addEventListener("submit", guardarDia);
   semanaForm.addEventListener("submit", guardarSemana);
   btnAddAsignacion.addEventListener("click", () =>
-    renderAsignacionRow(asignacionesList, {})
+    renderAsignacionRow(asignacionesList, {}, "lun_vie")
   );
   btnAddAsignacionSabado.addEventListener("click", () =>
-    renderAsignacionRow(asignacionesSabadoList, {})
+    renderAsignacionRow(asignacionesSabadoList, {}, "sabado")
   );
+  btnCopiarSemana.addEventListener("click", copiarHorarioSemana);
+  btnPegarSemana.addEventListener("click", pegarHorarioSemana);
+  btnEnviarWhatsApp.addEventListener("click", enviarHorariosPorWhatsApp);
   btnRecargar.addEventListener("click", cargarReporte);
+  btnVerificarMes.addEventListener("click", async () => {
+    const mes = Number(mesSelect.value) || 1;
+    setStatus("Verificando mes…");
+    try {
+      const data = await api(`/api/registros?mes=${mes}&anio=2026`);
+      estado = data;
+      renderTabla();
+      verificarMesActual();
+    } catch (err) {
+      setStatus(err.message, true);
+    }
+  });
   btnCatalogos.addEventListener("click", async () => {
     try {
       resetEmpForm();
