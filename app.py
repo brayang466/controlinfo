@@ -575,25 +575,27 @@ def _etiqueta_turno(tur):
 def _minutos_desde_horas(hora_inicio, hora_fin):
     """
     Fórmula planilla:
-      duración = fin - inicio  → H:MM
+      duración = fin - inicio  → H:MM(:SS)
       minutos = (H * 60) + MM
+    Acepta HH:MM o HH:MM:SS.
     """
-    def parse(hhmm):
-        parts = str(hhmm).strip().split(":")
-        if len(parts) != 2:
-            raise ValueError(f"Hora inválida: {hhmm}")
+    def parse(hhmmss):
+        parts = str(hhmmss).strip().split(":")
+        if len(parts) not in (2, 3):
+            raise ValueError(f"Hora inválida: {hhmmss}")
         h, m = int(parts[0]), int(parts[1])
-        if h < 0 or h > 23 or m < 0 or m > 59:
-            raise ValueError(f"Hora fuera de rango: {hhmm}")
-        return h * 60 + m
+        s = int(parts[2]) if len(parts) == 3 else 0
+        if h < 0 or h > 23 or m < 0 or m > 59 or s < 0 or s > 59:
+            raise ValueError(f"Hora fuera de rango: {hhmmss}")
+        return h * 3600 + m * 60 + s
 
     ini = parse(hora_inicio)
     fin = parse(hora_fin)
     if fin < ini:
-        fin += 24 * 60
+        fin += 24 * 3600
     diff = fin - ini
-    horas = diff // 60
-    mins = diff % 60
+    horas = diff // 3600
+    mins = (diff % 3600) // 60
     return horas * 60 + mins, horas, mins
 
 

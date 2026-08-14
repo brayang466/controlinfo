@@ -25,8 +25,8 @@ CREATE TABLE registros_diarios (
   fecha_id INT NOT NULL,
   minutos_parada INT NOT NULL DEFAULT 0,
   minutos_produccion INT NOT NULL DEFAULT 0,
-  hora_inicio_proceso VARCHAR(5) NULL COMMENT 'HH:MM inicio de proceso',
-  hora_fin_proceso VARCHAR(5) NULL COMMENT 'HH:MM fin de proceso',
+  hora_inicio_proceso VARCHAR(8) NULL COMMENT 'HH:MM:SS inicio de proceso',
+  hora_fin_proceso VARCHAR(8) NULL COMMENT 'HH:MM:SS fin de proceso',
   porcentaje_parada DECIMAL(5,2)
     GENERATED ALWAYS AS (
       CASE
