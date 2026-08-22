@@ -33,8 +33,10 @@
   const semanaFechaInicio = document.getElementById("semanaFechaInicio");
   const asignacionesList = document.getElementById("asignacionesList");
   const asignacionesSabadoList = document.getElementById("asignacionesSabadoList");
+  const excepcionesList = document.getElementById("excepcionesList");
   const btnAddAsignacion = document.getElementById("btnAddAsignacion");
   const btnAddAsignacionSabado = document.getElementById("btnAddAsignacionSabado");
+  const btnAddExcepcion = document.getElementById("btnAddExcepcion");
   const btnEnviarWhatsApp = document.getElementById("btnEnviarWhatsApp");
   const btnCopiarSemana = document.getElementById("btnCopiarSemana");
   const btnPegarSemana = document.getElementById("btnPegarSemana");
@@ -780,6 +782,9 @@
             crearCeldaHorario({
               titulo: "Sábado",
               asignaciones: semana.asignaciones_sabado || [],
+              excepciones: (semana.excepciones || []).filter(
+                (e) => fechaLocal(e.fecha).getDay() === 6
+              ),
               responsable: semana.responsable_sabado || "",
               colspan: 1,
               clase: "sabado",
@@ -811,6 +816,9 @@
           crearCeldaHorario({
             titulo: `Lun–Vie · ${semana.etiqueta}`,
             asignaciones: semana.asignaciones_lun_vie || semana.asignaciones || [],
+            excepciones: (semana.excepciones || []).filter(
+              (e) => fechaLocal(e.fecha).getDay() !== 0 && fechaLocal(e.fecha).getDay() !== 6
+            ),
             responsable: semana.responsable_proceso || "",
             colspan: n - k,
             clase: "",
@@ -828,6 +836,7 @@
   function crearCeldaHorario({
     titulo,
     asignaciones,
+    excepciones = [],
     responsable,
     colspan,
     clase,
@@ -837,7 +846,6 @@
     const td = document.createElement("td");
     td.className = "week-cell editable" + (clase ? ` ${clase}` : "");
     td.colSpan = colspan;
-    // Ancho cómodo según días que abarca (legible en bloques lun–vie)
     const base = clase === "sabado" ? 180 : 108;
     td.style.minWidth = `${Math.max(base, colspan * base * 0.92)}px`;
 
@@ -873,7 +881,27 @@
         resp.textContent = `Responsable: ${responsable}`;
         card.appendChild(resp);
       }
-    } else {
+    }
+
+    if (excepciones && excepciones.length) {
+      const chipsExc = document.createElement("div");
+      chipsExc.className = "week-chips";
+      excepciones.forEach((e, idx) => {
+        const chip = document.createElement("div");
+        chip.className = "chip chip-exc";
+        chip.style.animationDelay = `${idx * 35}ms`;
+        const dia = e.fecha ? e.fecha.slice(8, 10) + "/" + e.fecha.slice(5, 7) : "";
+        chip.innerHTML = `
+          <strong>Exc. ${dia}</strong>
+          <span>${e.cubre_etiqueta || ""}</span>
+          ${e.sale_etiqueta ? `<span>← ${e.sale_etiqueta}</span>` : ""}
+        `;
+        chipsExc.appendChild(chip);
+      });
+      card.appendChild(chipsExc);
+    }
+
+    if (!(asignaciones && asignaciones.length) && !(excepciones && excepciones.length)) {
       const empty = document.createElement("div");
       empty.className = "week-empty";
       empty.textContent = vacio || "Sin horario";
@@ -1084,9 +1112,146 @@
     return items.map((a) => `- ${a.empleado} → ${a.turno}`);
   }
 
+  function diasOpcionesSemanaActual() {
+    const inicio = semanaFechaInicio.value;
+    if (!inicio) return [];
+    const lunes = fechaLocal(inicio);
+    const out = [];
+    const nombres = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+    for (let i = 0; i < 7; i += 1) {
+      const d = new Date(lunes);
+      d.setDate(lunes.getDate() + i);
+      if (d.getDay() === 0) continue; // domingo no se trabaja
+      const iso = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+      out.push({
+        value: iso,
+        label: `${nombres[d.getDay()]} ${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}`,
+      });
+    }
+    return out;
+  }
+
+  function renderExcepcionRow(exc = {}) {
+    const row = document.createElement("div");
+    row.className = "exc-row";
+    const dias = diasOpcionesSemanaActual();
+    const diasOpts = dias
+      .map(
+        (d) =>
+          `<option value="${d.value}" ${
+            String(d.value) === String(exc.fecha || "") ? "selected" : ""
+          }>${d.label}</option>`
+      )
+      .join("");
+    row.innerHTML = `
+      <select class="form-select exc-fecha">
+        <option value="">Día…</option>
+        ${diasOpts}
+      </select>
+      <select class="form-select exc-sale">
+        <option value="">Cede (opcional)…</option>
+        ${optionList(estado.empleados || [], "id", "etiqueta", exc.empleado_sale_id)}
+      </select>
+      <select class="form-select exc-cubre">
+        <option value="">Cubre…</option>
+        ${optionList(estado.empleados || [], "id", "etiqueta", exc.empleado_cubre_id)}
+      </select>
+      <select class="form-select exc-turno">
+        <option value="">Turno…</option>
+        ${optionList(estado.turnos || [], "id", "etiqueta", exc.turno_id)}
+      </select>
+      <input type="text" class="form-control exc-nota" maxlength="255" placeholder="Nota (opcional)" value="${
+        String(exc.nota || "").replace(/"/g, "&quot;")
+      }" />
+      <button type="button" class="icon-action danger btn-remove">Quitar</button>
+    `;
+    const sync = () => {
+      const fecha = row.querySelector(".exc-fecha").value;
+      const cubre = row.querySelector(".exc-cubre").value;
+      const turno = row.querySelector(".exc-turno").value;
+      const sale = row.querySelector(".exc-sale").value;
+      const incompleta = Boolean(
+        (fecha || cubre || turno || sale) && !(fecha && cubre && turno)
+      );
+      const mismo = Boolean(cubre && sale && cubre === sale);
+      row.classList.toggle("incomplete", incompleta || mismo);
+    };
+    row.querySelectorAll("select, input").forEach((el) => {
+      el.addEventListener("change", sync);
+      el.addEventListener("input", sync);
+    });
+    row.querySelector(".btn-remove").addEventListener("click", () => row.remove());
+    sync();
+    excepcionesList.appendChild(row);
+  }
+
+  function leerExcepciones() {
+    const out = [];
+    for (const row of excepcionesList.querySelectorAll(".exc-row")) {
+      const fecha = row.querySelector(".exc-fecha").value;
+      const cubre = row.querySelector(".exc-cubre").value;
+      const turno = row.querySelector(".exc-turno").value;
+      const sale = row.querySelector(".exc-sale").value;
+      const nota = row.querySelector(".exc-nota").value.trim();
+      if (!fecha && !cubre && !turno && !sale && !nota) continue;
+      if (!fecha || !cubre || !turno) continue;
+      out.push({
+        fecha,
+        empleado_cubre_id: Number(cubre),
+        empleado_sale_id: sale ? Number(sale) : null,
+        turno_id: Number(turno),
+        nota,
+      });
+    }
+    return out;
+  }
+
+  function validarFilasExcepcion() {
+    const incompletas = [];
+    for (const row of excepcionesList.querySelectorAll(".exc-row")) {
+      const fecha = row.querySelector(".exc-fecha").value;
+      const cubre = row.querySelector(".exc-cubre").value;
+      const turno = row.querySelector(".exc-turno").value;
+      const sale = row.querySelector(".exc-sale").value;
+      const nota = row.querySelector(".exc-nota").value.trim();
+      const vacia = !fecha && !cubre && !turno && !sale && !nota;
+      if (vacia) {
+        row.classList.remove("incomplete");
+        continue;
+      }
+      const incompleta = !(fecha && cubre && turno);
+      const mismo = Boolean(cubre && sale && cubre === sale);
+      row.classList.toggle("incomplete", incompleta || mismo);
+      if (incompleta || mismo) incompletas.push(row);
+    }
+    return incompletas;
+  }
+
+  function excepcionesTextoLista() {
+    const out = [];
+    for (const row of excepcionesList.querySelectorAll(".exc-row")) {
+      const fechaSel = row.querySelector(".exc-fecha");
+      const cubreSel = row.querySelector(".exc-cubre");
+      const saleSel = row.querySelector(".exc-sale");
+      const turSel = row.querySelector(".exc-turno");
+      if (!fechaSel.value || !cubreSel.value || !turSel.value) continue;
+      const fechaLabel = textoOpcionSelect(fechaSel);
+      const cubre = textoOpcionSelect(cubreSel);
+      const sale = saleSel.value ? textoOpcionSelect(saleSel) : "";
+      const turno = textoOpcionSelect(turSel);
+      const nota = row.querySelector(".exc-nota").value.trim();
+      let line = `- ${fechaLabel}: ${cubre} cubre ${turno}`;
+      if (sale) line += ` (en lugar de ${sale})`;
+      if (nota) line += ` · ${nota}`;
+      out.push(line);
+    }
+    return out;
+  }
+
   function construirMensajeHorariosWhatsApp() {
     const lunVie = leerAsignacionesTexto(asignacionesList);
     const sabado = leerAsignacionesTexto(asignacionesSabadoList);
+    const excepciones = excepcionesTextoLista();
     const rango = (semanaMeta.textContent || "").trim();
     const fechaInicio = semanaFechaInicio.value || "";
     const responsable =
@@ -1105,6 +1270,9 @@
       "*Sábado*",
       ...formatearLineasAsignacion(sabado),
     ];
+    if (excepciones.length) {
+      lineas.push("", "*Excepciones*", ...excepciones);
+    }
     if (responsable) {
       lineas.push("", "*Responsable del proceso:* " + responsable);
     }
@@ -1115,9 +1283,10 @@
     limpiarAlertaSemana();
     const lunVie = leerAsignacionesTexto(asignacionesList);
     const sabado = leerAsignacionesTexto(asignacionesSabadoList);
-    if (!lunVie.length && !sabado.length) {
+    const excepciones = excepcionesTextoLista();
+    if (!lunVie.length && !sabado.length && !excepciones.length) {
       const msg =
-        "Completa al menos una asignación antes de enviar por WhatsApp.";
+        "Completa al menos una asignación o excepción antes de enviar por WhatsApp.";
       mostrarAlertaSemana(msg, "error");
       mostrarToast(msg, "error", "WhatsApp");
       return;
@@ -1139,13 +1308,17 @@
     semanaMeta.textContent =
       "Lunes " + semana.fecha_inicio + " → Domingo " + semana.fecha_fin;
     semanaHint.textContent =
-      "Un mismo empleado puede tener varios turnos. No uses turnos de sábado en lun–vie ni turnos de entre semana en sábado.";
+      "Un mismo empleado puede tener varios turnos. Usa Excepciones para cambios puntuales entre compañeros.";
 
     bloqueLunVie.classList.remove("d-none");
     bloqueSabado.classList.remove("d-none");
 
+    const tabBase = document.getElementById("tabHorarioBase");
+    if (tabBase) tabBase.click();
+
     asignacionesList.innerHTML = "";
     asignacionesSabadoList.innerHTML = "";
+    excepcionesList.innerHTML = "";
 
     const itemsLv =
       (semana.asignaciones_lun_vie || semana.asignaciones || []).length
@@ -1156,6 +1329,13 @@
     const itemsSab =
       (semana.asignaciones_sabado || []).length ? semana.asignaciones_sabado : [{}];
     itemsSab.forEach((a) => renderAsignacionRow(asignacionesSabadoList, a, "sabado"));
+
+    const itemsExc = semana.excepciones || [];
+    if (itemsExc.length) {
+      itemsExc.forEach((e) => renderExcepcionRow(e));
+    } else {
+      renderExcepcionRow({});
+    }
 
     actualizarEstadoPortapapelesSemana();
     modalSemana.show();
@@ -1382,10 +1562,11 @@
     const incompletas = [
       ...validarFilasAsignacion(asignacionesList),
       ...validarFilasAsignacion(asignacionesSabadoList),
+      ...validarFilasExcepcion(),
     ];
     if (incompletas.length) {
       const msg =
-        "Hay filas incompletas: cada fila debe tener empleado y turno, o quítala.";
+        "Hay filas incompletas en horario o excepciones. Complétalas o quítalas.";
       mostrarAlertaSemana(msg, "error");
       mostrarToast(msg, "error", "Validación");
       return;
@@ -1400,14 +1581,16 @@
 
     const asignaciones_lun_vie = leerAsignaciones(asignacionesList);
     const asignaciones_sabado = leerAsignaciones(asignacionesSabadoList);
+    const excepciones = leerExcepciones();
 
     if (
       !asignaciones_lun_vie.length &&
       !asignaciones_sabado.length &&
+      !excepciones.length &&
       !confirmarGuardadoVacio
     ) {
       const msg =
-        "Vas a guardar la semana sin asignaciones (se borrarán). Pulsa Guardar otra vez para confirmar.";
+        "Vas a guardar la semana sin asignaciones ni excepciones (se borrarán). Pulsa Guardar otra vez para confirmar.";
       confirmarGuardadoVacio = true;
       mostrarAlertaSemana(msg, "warn");
       mostrarToast(msg, "warn", "Confirmación");
@@ -1423,6 +1606,7 @@
           fecha_inicio: semanaFechaInicio.value,
           asignaciones_lun_vie,
           asignaciones_sabado,
+          excepciones,
         }),
       });
       modalSemana.hide();
@@ -1608,6 +1792,7 @@
   btnAddAsignacionSabado.addEventListener("click", () =>
     renderAsignacionRow(asignacionesSabadoList, {}, "sabado")
   );
+  btnAddExcepcion.addEventListener("click", () => renderExcepcionRow({}));
   btnCopiarSemana.addEventListener("click", copiarHorarioSemana);
   btnPegarSemana.addEventListener("click", pegarHorarioSemana);
   btnEnviarWhatsApp.addEventListener("click", enviarHorariosPorWhatsApp);
