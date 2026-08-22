@@ -515,7 +515,8 @@ def create_app():
         Body: {
           fecha_inicio,
           asignaciones / asignaciones_lun_vie: [{empleado_id, turno_id}, ...],
-          asignaciones_sabado: [{empleado_id, turno_id}, ...]
+          asignaciones_sabado: [{empleado_id, turno_id}, ...],
+          excepciones: [{fecha, empleado_cubre_id, empleado_sale_id, turno_id, nota}, ...]
         }
         """
         data = request.get_json(silent=True) or {}
@@ -524,6 +525,7 @@ def create_app():
         if asig_lv is None:
             asig_lv = data.get("asignaciones") or []
         asig_sab = data.get("asignaciones_sabado") or []
+        excepciones = data.get("excepciones") or []
         if not fecha_inicio_str:
             return jsonify({"error": "fecha_inicio es obligatoria"}), 400
 
@@ -540,8 +542,11 @@ def create_app():
             execute("DELETE FROM horarios_semana WHERE fecha_inicio = %s", (lunes.isoformat(),))
             _insertar_asignaciones_semana(lunes, domingo, asig_lv, "lun_vie")
             _insertar_asignaciones_semana(lunes, domingo, asig_sab, "sabado")
+            _guardar_excepciones_semana(lunes, domingo, excepciones)
             _sincronizar_texto_semana(lunes, domingo)
             responsable = sincronizar_responsable_planta(lunes, domingo)
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
         except Error as exc:
             return jsonify({"error": str(exc)}), 500
 
@@ -553,6 +558,7 @@ def create_app():
                 "asignaciones": _asignaciones_semana(lunes.isoformat(), "lun_vie"),
                 "asignaciones_lun_vie": _asignaciones_semana(lunes.isoformat(), "lun_vie"),
                 "asignaciones_sabado": _asignaciones_semana(lunes.isoformat(), "sabado"),
+                "excepciones": _excepciones_semana(lunes.isoformat()),
                 "responsable_proceso": responsable,
             }
         )
@@ -699,6 +705,131 @@ def _texto_asignaciones(asig):
     return " / ".join(a["texto"] for a in asig) if asig else ""
 
 
+def _excepciones_semana(fecha_inicio):
+    rows = fetch_all(
+        """
+        SELECT hx.id, hx.fecha_inicio, hx.fecha,
+               hx.empleado_cubre_id, hx.empleado_sale_id, hx.turno_id, hx.nota,
+               ec.nombre AS cubre_nombre, es.nombre AS sale_nombre,
+               t.nombre AS turno_nombre, t.hora_inicio, t.hora_fin
+        FROM horarios_excepciones hx
+        JOIN empleados ec ON ec.id = hx.empleado_cubre_id
+        LEFT JOIN empleados es ON es.id = hx.empleado_sale_id
+        JOIN turnos_trabajo t ON t.id = hx.turno_id
+        WHERE hx.fecha_inicio = %s
+        ORDER BY hx.fecha, ec.nombre
+        """,
+        (fecha_inicio,),
+    )
+    out = []
+    for r in rows:
+        tur = {"hora_inicio": r["hora_inicio"], "hora_fin": r["hora_fin"]}
+        cubre = _etiqueta_empleado({"nombre": r["cubre_nombre"]})
+        sale = _etiqueta_empleado({"nombre": r["sale_nombre"]}) if r.get("sale_nombre") else ""
+        turno_et = f"{r['turno_nombre']}: {_etiqueta_turno(tur)}"
+        if sale:
+            texto = f"Excepción: {cubre} cubre {turno_et} (en lugar de {sale})"
+        else:
+            texto = f"Excepción: {cubre} → {turno_et}"
+        out.append(
+            {
+                "id": r["id"],
+                "fecha_inicio": r["fecha_inicio"].isoformat()
+                if isinstance(r["fecha_inicio"], date)
+                else str(r["fecha_inicio"])[:10],
+                "fecha": r["fecha"].isoformat()
+                if isinstance(r["fecha"], date)
+                else str(r["fecha"])[:10],
+                "empleado_cubre_id": r["empleado_cubre_id"],
+                "empleado_sale_id": r["empleado_sale_id"],
+                "turno_id": r["turno_id"],
+                "nota": r.get("nota") or "",
+                "cubre_etiqueta": cubre,
+                "sale_etiqueta": sale,
+                "turno_etiqueta": turno_et,
+                "texto": texto,
+            }
+        )
+    return out
+
+
+def _guardar_excepciones_semana(lunes, domingo, excepciones):
+    execute("DELETE FROM horarios_excepciones WHERE fecha_inicio = %s", (lunes.isoformat(),))
+    vistos = set()
+    for item in excepciones or []:
+        try:
+            fecha = date.fromisoformat(str(item.get("fecha") or "")[:10])
+            cubre_id = int(item.get("empleado_cubre_id"))
+            turno_id = int(item.get("turno_id"))
+        except (TypeError, ValueError):
+            continue
+        if fecha < lunes or fecha > domingo:
+            raise ValueError(f"La fecha {fecha.isoformat()} no pertenece a la semana")
+        if fecha.weekday() == 6:
+            raise ValueError("No se registran excepciones en domingo")
+        sale_raw = item.get("empleado_sale_id")
+        sale_id = int(sale_raw) if sale_raw not in (None, "", 0, "0") else None
+        if sale_id and sale_id == cubre_id:
+            raise ValueError("En una excepción, quien cubre y quien cede deben ser distintos")
+        nota = (item.get("nota") or "").strip() or None
+        clave = (fecha.isoformat(), cubre_id, sale_id, turno_id)
+        if clave in vistos:
+            continue
+        vistos.add(clave)
+        cubre = fetch_one(
+            "SELECT id FROM empleados WHERE id = %s AND activo = TRUE", (cubre_id,)
+        )
+        tur = fetch_one(
+            "SELECT id FROM turnos_trabajo WHERE id = %s AND activo = TRUE", (turno_id,)
+        )
+        if not cubre or not tur:
+            continue
+        if sale_id:
+            sale = fetch_one(
+                "SELECT id FROM empleados WHERE id = %s AND activo = TRUE", (sale_id,)
+            )
+            if not sale:
+                sale_id = None
+        execute(
+            """
+            INSERT INTO horarios_excepciones
+              (fecha_inicio, fecha, empleado_cubre_id, empleado_sale_id, turno_id, nota)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """,
+            (lunes.isoformat(), fecha.isoformat(), cubre_id, sale_id, turno_id, nota),
+        )
+
+
+def _texto_excepciones_dia(fecha_iso):
+    items = fetch_all(
+        """
+        SELECT hx.nota, ec.nombre AS cubre_nombre, es.nombre AS sale_nombre,
+               t.nombre AS turno_nombre, t.hora_inicio, t.hora_fin
+        FROM horarios_excepciones hx
+        JOIN empleados ec ON ec.id = hx.empleado_cubre_id
+        LEFT JOIN empleados es ON es.id = hx.empleado_sale_id
+        JOIN turnos_trabajo t ON t.id = hx.turno_id
+        WHERE hx.fecha = %s
+        ORDER BY ec.nombre
+        """,
+        (fecha_iso,),
+    )
+    partes = []
+    for r in items:
+        tur = {"hora_inicio": r["hora_inicio"], "hora_fin": r["hora_fin"]}
+        cubre = _etiqueta_empleado({"nombre": r["cubre_nombre"]})
+        sale = _etiqueta_empleado({"nombre": r["sale_nombre"]}) if r.get("sale_nombre") else ""
+        turno_et = f"{r['turno_nombre']}: {_etiqueta_turno(tur)}"
+        if sale:
+            txt = f"Excepción: {cubre} cubre {turno_et} (en lugar de {sale})"
+        else:
+            txt = f"Excepción: {cubre} → {turno_et}"
+        if r.get("nota"):
+            txt += f" · {r['nota']}"
+        partes.append(txt)
+    return " / ".join(partes)
+
+
 def _sincronizar_texto_semana(lunes, domingo):
     texto_lv = _texto_asignaciones(_asignaciones_semana(lunes.isoformat(), "lun_vie"))
     texto_sab = _texto_asignaciones(_asignaciones_semana(lunes.isoformat(), "sabado"))
@@ -718,6 +849,9 @@ def _sincronizar_texto_semana(lunes, domingo):
             texto = ""
         else:
             texto = texto_lv
+        extra = _texto_excepciones_dia(f.isoformat())
+        if extra:
+            texto = f"{texto} / {extra}" if texto else extra
 
         if texto:
             existe = fetch_one(
@@ -768,6 +902,7 @@ def _semanas_del_mes(columnas):
             j += 1
         asig_lv = _asignaciones_semana(lunes.isoformat(), "lun_vie")
         asig_sab = _asignaciones_semana(lunes.isoformat(), "sabado")
+        excepciones = _excepciones_semana(lunes.isoformat())
         semanas.append(
             {
                 "inicio_idx": i,
@@ -778,6 +913,7 @@ def _semanas_del_mes(columnas):
                 "asignaciones": asig_lv,
                 "asignaciones_lun_vie": asig_lv,
                 "asignaciones_sabado": asig_sab,
+                "excepciones": excepciones,
                 "texto": _texto_asignaciones(asig_lv),
                 "responsable_proceso": _responsable_de_asigs(asig_lv),
                 "responsable_sabado": _responsable_de_asigs(asig_sab),
