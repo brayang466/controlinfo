@@ -1,4 +1,8 @@
 (() => {
+  const puedeEditarTodo = document.body.dataset.puedeEditarTodo === "1";
+  const puedeEditarHorarios = document.body.dataset.puedeEditarHorarios === "1";
+  const soloLectura = document.body.dataset.soloLectura === "1";
+
   const mesSelect = document.getElementById("mesSelect");
   const btnRecargar = document.getElementById("btnRecargar");
   const btnPrecargar = document.getElementById("btnPrecargar");
@@ -914,6 +918,16 @@
   }
 
   function abrirEditorDia(col) {
+    if (!puedeEditarTodo) {
+      mostrarToast(
+        soloLectura
+          ? "Tu rol es solo lectura. No puedes editar días."
+          : "Solo el superadmin puede editar el reporte diario.",
+        "warn",
+        "Sin permiso"
+      );
+      return;
+    }
     editFechaId.value = col.fecha_id;
     editTitle.textContent = `Editar · ${col.etiqueta}`;
     const flags = [];
@@ -1300,6 +1314,14 @@
   }
 
   function abrirEditorSemana(semana) {
+    if (!puedeEditarHorarios) {
+      mostrarToast(
+        "Tu rol es solo lectura. No puedes editar horarios.",
+        "warn",
+        "Sin permiso"
+      );
+      return;
+    }
     confirmarGuardadoVacio = false;
     limpiarAlertaSemana();
 
@@ -1835,6 +1857,17 @@
   mesSelect.addEventListener("change", cargarReporte);
 
   (async function init() {
+    if (!puedeEditarTodo) {
+      if (btnPrecargar) btnPrecargar.classList.add("d-none");
+      if (btnCatalogos && !puedeEditarHorarios) btnCatalogos.classList.add("d-none");
+    }
+    if (soloLectura) {
+      const hint = document.getElementById("scrollHint");
+      if (hint) {
+        hint.textContent =
+          "Modo visitante · solo consulta. Desplaza horizontalmente para ver todos los días";
+      }
+    }
     poblarSelectorMeses();
     poblarSelectoresCatalogo();
     poblarSelectoresProceso();

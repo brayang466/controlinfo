@@ -11,7 +11,12 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
 </head>
-<body>
+<body
+  data-rol="{{ user.rol if user else '' }}"
+  data-puede-editar-todo="{{ '1' if puede_editar_todo else '0' }}"
+  data-puede-editar-horarios="{{ '1' if puede_editar_horarios else '0' }}"
+  data-solo-lectura="{{ '1' if solo_lectura else '0' }}"
+>
   <div class="bg-atmosphere" aria-hidden="true"></div>
 
   <div class="app-shell">
@@ -30,9 +35,16 @@
         <button type="button" id="btnCatalogos" class="btn-ghost">Empleados y turnos</button>
         <button type="button" id="btnPrecargar" class="btn-solid">Precargar 2026</button>
       </div>
+      <div class="user-chip">
+        <div class="user-chip-text">
+          <strong>{{ user.nombre if user else 'Usuario' }}</strong>
+          <span>{{ user.rol if user else '' }}</span>
+        </div>
+        <a class="btn-ghost btn-sm" href="{{ url_for('logout_get') }}">Salir</a>
+      </div>
       <div id="statusBar" class="status" role="status" aria-live="polite"></div>
     </header>
-    <p class="scroll-hint">Desplaza horizontalmente para ver todos los días · Clic en una celda o bloque de horario para editar</p>
+    <p class="scroll-hint" id="scrollHint">Desplaza horizontalmente para ver todos los días · Clic en una celda o bloque de horario para editar</p>
 
     <main class="sheet-panel">
       <div class="sheet-scroll" id="sheetScroll">

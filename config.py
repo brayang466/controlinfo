@@ -11,3 +11,5 @@ class Config:
     MYSQL_USER = os.getenv("MYSQL_USER", "root")
     MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
     MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "control_paradas")
+    APP_PORT = int(os.getenv("APP_PORT", "5011"))
+    PERMANENT_SESSION_LIFETIME = 60 * 60 * 12  # 12 horas

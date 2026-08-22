@@ -5,9 +5,19 @@ Aplicativo Flask — PARADAS DE LÍNEA POR TECNOLOGÍA 2026
 from datetime import date, timedelta
 from decimal import Decimal
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, redirect, render_template, request, session, url_for
 from mysql.connector import Error
 
+from auth import (
+    asignar_pin_maestro,
+    autenticar,
+    iniciar_sesion,
+    listar_usuarios_login,
+    login_required,
+    pin_maestro_asignado,
+    roles_required,
+    usuario_actual,
+)
 from config import Config
 from db import close_db, execute, fetch_all, fetch_one
 
@@ -135,14 +145,88 @@ def create_app():
     app.config.from_object(Config)
     app.teardown_appcontext(close_db)
 
+    @app.route("/login")
+    def login():
+        if session.get("user_id"):
+            return redirect(url_for("index"))
+        return render_template("login.html")
+
+    @app.get("/api/auth/estado")
+    def api_auth_estado():
+        try:
+            usuarios = listar_usuarios_login()
+            return jsonify(
+                {
+                    "pin_asignado": pin_maestro_asignado(),
+                    "usuarios": [
+                        {
+                            "id": u["id"],
+                            "username": u["username"],
+                            "rol": u["rol"],
+                            "nombre": u["nombre"],
+                            "requiere_pin": u["rol"] in ("superadmin", "admin"),
+                        }
+                        for u in usuarios
+                    ],
+                }
+            )
+        except Error as exc:
+            return jsonify({"error": f"Error de base de datos: {exc}"}), 500
+
+    @app.post("/api/auth/asignar-pin")
+    def api_auth_asignar_pin():
+        data = request.get_json(silent=True) or {}
+        ok, error = asignar_pin_maestro(data.get("pin"), data.get("pin_confirm"))
+        if not ok:
+            codigo = 409 if "superadmin" in (error or "").lower() else 400
+            return jsonify({"error": error}), codigo
+        return jsonify({"ok": True, "pin_asignado": True})
+
+    @app.post("/api/auth/login")
+    def api_auth_login():
+        data = request.get_json(silent=True) or {}
+        try:
+            user, error = autenticar(data.get("username"), data.get("pin"))
+        except Error as exc:
+            return jsonify({"error": f"Error de base de datos: {exc}"}), 500
+        if error:
+            return jsonify({"error": error}), 401
+        iniciar_sesion(user)
+        return jsonify({"ok": True, "user": user})
+
+    @app.post("/api/auth/logout")
+    @login_required
+    def api_auth_logout():
+        session.clear()
+        return jsonify({"ok": True})
+
+    @app.get("/api/auth/me")
+    @login_required
+    def api_auth_me():
+        return jsonify({"user": usuario_actual()})
+
+    @app.get("/logout")
+    def logout_get():
+        session.clear()
+        return redirect(url_for("login"))
+
     @app.route("/")
+    @login_required
     def index():
-        return render_template("index.html")
+        user = usuario_actual()
+        return render_template(
+            "index.html",
+            user=user,
+            puede_editar_todo=user and user["rol"] == "superadmin",
+            puede_editar_horarios=user and user["rol"] in ("superadmin", "admin"),
+            solo_lectura=user and user["rol"] == "visitante",
+        )
 
     # ------------------------------------------------------------------
     # Registros diarios
     # ------------------------------------------------------------------
     @app.get("/api/registros")
+    @login_required
     def api_registros():
         anio = request.args.get("anio", type=int) or 2026
         mes = request.args.get("mes", type=int) or 1
@@ -229,6 +313,7 @@ def create_app():
         )
 
     @app.post("/api/registros/guardar")
+    @roles_required("superadmin")
     def api_registros_guardar():
         data = request.get_json(silent=True) or {}
         fecha_id = data.get("fecha_id")
@@ -353,6 +438,7 @@ def create_app():
         return jsonify({"ok": True, "registro": _serializar_dia(row, mes_num)})
 
     @app.post("/api/calendario/precargar")
+    @roles_required("superadmin")
     def api_precargar():
         data = request.get_json(silent=True) or {}
         anio = int(data.get("anio") or request.args.get("anio") or 2026)
@@ -363,11 +449,13 @@ def create_app():
     # Empleados
     # ------------------------------------------------------------------
     @app.get("/api/empleados")
+    @login_required
     def api_empleados():
         todos = request.args.get("todos") == "1"
         return jsonify(_listar_empleados(solo_activos=not todos))
 
     @app.post("/api/empleados")
+    @roles_required("superadmin")
     def api_empleados_crear():
         data = request.get_json(silent=True) or {}
         nombre = (data.get("nombre") or "").strip()
@@ -394,6 +482,7 @@ def create_app():
         return jsonify({"ok": True, "empleado": fetch_one("SELECT * FROM empleados WHERE id = %s", (new_id,))})
 
     @app.put("/api/empleados/<int:empleado_id>")
+    @roles_required("superadmin")
     def api_empleados_actualizar(empleado_id):
         data = request.get_json(silent=True) or {}
         emp = fetch_one("SELECT id FROM empleados WHERE id = %s", (empleado_id,))
@@ -429,6 +518,7 @@ def create_app():
         return jsonify({"ok": True, "empleado": fetch_one("SELECT * FROM empleados WHERE id = %s", (empleado_id,))})
 
     @app.delete("/api/empleados/<int:empleado_id>")
+    @roles_required("superadmin")
     def api_empleados_eliminar(empleado_id):
         """Borrado lógico (activo = false)."""
         emp = fetch_one("SELECT id FROM empleados WHERE id = %s", (empleado_id,))
@@ -441,11 +531,13 @@ def create_app():
     # Turnos
     # ------------------------------------------------------------------
     @app.get("/api/turnos")
+    @login_required
     def api_turnos():
         todos = request.args.get("todos") == "1"
         return jsonify(_listar_turnos(solo_activos=not todos))
 
     @app.post("/api/turnos")
+    @roles_required("superadmin")
     def api_turnos_crear():
         data = request.get_json(silent=True) or {}
         nombre = (data.get("nombre") or "").strip()
@@ -466,6 +558,7 @@ def create_app():
         return jsonify({"ok": True, "turno": fetch_one("SELECT * FROM turnos_trabajo WHERE id = %s", (new_id,))})
 
     @app.put("/api/turnos/<int:turno_id>")
+    @roles_required("superadmin")
     def api_turnos_actualizar(turno_id):
         data = request.get_json(silent=True) or {}
         tur = fetch_one("SELECT id FROM turnos_trabajo WHERE id = %s", (turno_id,))
@@ -492,6 +585,7 @@ def create_app():
         return jsonify({"ok": True, "turno": fetch_one("SELECT * FROM turnos_trabajo WHERE id = %s", (turno_id,))})
 
     @app.delete("/api/turnos/<int:turno_id>")
+    @roles_required("superadmin")
     def api_turnos_eliminar(turno_id):
         tur = fetch_one("SELECT id FROM turnos_trabajo WHERE id = %s", (turno_id,))
         if not tur:
@@ -503,6 +597,7 @@ def create_app():
     # Horarios semanales
     # ------------------------------------------------------------------
     @app.get("/api/horarios-semana")
+    @login_required
     def api_horarios_semana_get():
         fecha_inicio = request.args.get("fecha_inicio")
         if not fecha_inicio:
@@ -510,6 +605,7 @@ def create_app():
         return jsonify(_asignaciones_semana(fecha_inicio))
 
     @app.post("/api/horarios-semana/guardar")
+    @roles_required("superadmin", "admin")
     def api_horarios_semana_guardar():
         """
         Body: {
@@ -1007,4 +1103,4 @@ def _precargar_anio(anio):
 app = create_app()
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=True, host="0.0.0.0", port=app.config["APP_PORT"])

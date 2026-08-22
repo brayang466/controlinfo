@@ -123,6 +123,27 @@ CREATE TABLE horarios_personal (
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+CREATE TABLE usuarios (
+  id INT NOT NULL AUTO_INCREMENT,
+  username VARCHAR(50) NOT NULL,
+  rol VARCHAR(20) NOT NULL COMMENT 'superadmin | admin | visitante',
+  nombre VARCHAR(100) NOT NULL,
+  activo BOOLEAN NOT NULL DEFAULT TRUE,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_usuarios_username (username)
+) ENGINE=InnoDB;
+
+CREATE TABLE pin_maestro (
+  id TINYINT NOT NULL PRIMARY KEY,
+  pin_hash VARCHAR(255) NOT NULL,
+  asignado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+INSERT INTO usuarios (username, rol, nombre, activo) VALUES
+  ('superadmin', 'superadmin', 'Super Administrador', TRUE),
+  ('admin', 'admin', 'Administrador', TRUE),
+  ('visitante', 'visitante', 'Visitante', TRUE);
+
 CREATE INDEX idx_dias_calendario_fecha ON dias_calendario (fecha);
 CREATE INDEX idx_horarios_semana_rango ON horarios_semana (fecha_inicio, fecha_fin);
 

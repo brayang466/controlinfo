@@ -174,8 +174,38 @@ html, body {
   text-align: right;
   min-width: 9rem;
 }
-.status.error { color: #b42318; }
-.status.ok { color: var(--accent-deep); }
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.35rem 0.45rem 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.78);
+  border: 1px solid rgba(20, 50, 40, 0.12);
+}
+.user-chip-text {
+  display: grid;
+  line-height: 1.15;
+}
+.user-chip-text strong {
+  font-size: 0.82rem;
+  color: var(--ink);
+}
+.user-chip-text span {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+body.role-readonly .sheet .editable,
+body.role-readonly .week-cell.editable {
+  cursor: default;
+}
+body.role-readonly .sheet .editable:hover,
+body.role-readonly .week-cell.editable:hover {
+  filter: none;
+}
 
 .verify-summary {
   display: grid;
