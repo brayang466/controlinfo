@@ -538,6 +538,66 @@ body.role-readonly .week-cell.editable:hover {
   opacity: 0.88;
 }
 
+.day-summary {
+  display: grid;
+  grid-template-columns: minmax(10rem, 38%) 1fr;
+  gap: 0.55rem 1rem;
+  margin: 0;
+}
+
+.day-summary > div {
+  display: contents;
+}
+
+.day-summary dt {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0.55rem 0;
+  border-bottom: 1px solid rgba(20, 50, 40, 0.08);
+}
+
+.day-summary dd {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--ink);
+  padding: 0.55rem 0;
+  border-bottom: 1px solid rgba(20, 50, 40, 0.08);
+  word-break: break-word;
+}
+
+.day-summary dd.empty {
+  color: var(--muted);
+  font-weight: 500;
+  font-style: italic;
+}
+
+.day-summary .span-full {
+  grid-column: 1 / -1;
+  margin-top: 0.35rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 12px;
+  background: rgba(31, 170, 89, 0.08);
+  border: 1px solid rgba(31, 170, 89, 0.18);
+}
+
+.day-summary .span-full dt {
+  border: none;
+  padding: 0 0 0.25rem;
+}
+
+.day-summary .span-full dd {
+  border: none;
+  padding: 0;
+  font-weight: 500;
+  white-space: pre-wrap;
+}
+
+
 .hint-line {
   color: var(--muted);
   font-size: 0.86rem;

@@ -144,6 +144,27 @@
     </div>
   </div>
 
+  <!-- Modal resumen día (visitante · solo lectura) -->
+  <div class="modal fade" id="resumenDiaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content glass-modal">
+        <div class="modal-header">
+          <div>
+            <h2 class="modal-title" id="resumenDiaTitle">Resumen del día</h2>
+            <p id="resumenDiaMeta" class="modal-sub"></p>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <dl class="day-summary" id="resumenDiaBody"></dl>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-solid" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal horario semanal -->
   <div class="modal fade" id="semanaModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-xl">
@@ -192,10 +213,10 @@
                 <button type="button" id="btnAddAsignacionSabado" class="btn-ghost mt-2 mb-3">+ Agregar (sábado)</button>
               </div>
 
-              <h3 class="section-label">Enviar a grupo de WhatsApp (prueba)</h3>
+              <h3 class="section-label">Enviar a grupo de WhatsApp</h3>
               <div class="wa-send-row">
                 <p class="hint-line mb-0">
-                  Se abrirá WhatsApp con un <strong>mensaje de prueba</strong> y el contenido de horarios.
+                  Se abrirá WhatsApp con el saludo según la hora y el contenido de horarios.
                   Elige el <strong>grupo</strong> y pulsa Enviar. No se usa un número individual.
                 </p>
               </div>

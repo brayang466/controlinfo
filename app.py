@@ -999,13 +999,18 @@ def _semanas_del_mes(columnas):
         asig_lv = _asignaciones_semana(lunes.isoformat(), "lun_vie")
         asig_sab = _asignaciones_semana(lunes.isoformat(), "sabado")
         excepciones = _excepciones_semana(lunes.isoformat())
+        semana_anio = lunes.isocalendar()[1]
         semanas.append(
             {
                 "inicio_idx": i,
                 "colspan": j - i,
                 "fecha_inicio": lunes.isoformat(),
                 "fecha_fin": domingo.isoformat(),
-                "etiqueta": f"{lunes.day:02d}/{lunes.month:02d} – {domingo.day:02d}/{domingo.month:02d}",
+                "semana_anio": semana_anio,
+                "etiqueta": (
+                    f"{lunes.day:02d}/{lunes.month:02d} – "
+                    f"{domingo.day:02d}/{domingo.month:02d} · Semana {semana_anio}"
+                ),
                 "asignaciones": asig_lv,
                 "asignaciones_lun_vie": asig_lv,
                 "asignaciones_sabado": asig_sab,

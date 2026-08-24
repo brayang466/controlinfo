@@ -79,6 +79,12 @@
     document.getElementById("verificarMesModal")
   );
   const modalUiAlert = new bootstrap.Modal(uiAlertModalEl);
+  const resumenDiaTitle = document.getElementById("resumenDiaTitle");
+  const resumenDiaMeta = document.getElementById("resumenDiaMeta");
+  const resumenDiaBody = document.getElementById("resumenDiaBody");
+  const modalResumenDia = new bootstrap.Modal(
+    document.getElementById("resumenDiaModal")
+  );
 
   const MESES = [
     "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -918,11 +924,13 @@
   }
 
   function abrirEditorDia(col) {
+    if (soloLectura) {
+      abrirResumenDia(col);
+      return;
+    }
     if (!puedeEditarTodo) {
       mostrarToast(
-        soloLectura
-          ? "Tu rol es solo lectura. No puedes editar días."
-          : "Solo el superadmin puede editar el reporte diario.",
+        "Solo el superadmin puede editar el reporte diario.",
         "warn",
         "Sin permiso"
       );
@@ -947,6 +955,85 @@
     festivoDescWrap.classList.toggle("d-none", !editFestivo.checked);
     actualizarCalculoProduccion();
     modalDia.show();
+  }
+
+  function textoOVacio(valor) {
+    const t = String(valor ?? "").trim();
+    return t || "—";
+  }
+
+  function escaparHtml(texto) {
+    return String(texto ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function formatearHoraResumen(valor) {
+    const t = String(valor || "").trim();
+    if (!t) return "—";
+    const m = t.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+    if (!m) return escaparHtml(t);
+    const hh = Number(m[1]);
+    const mm = m[2];
+    const ss = m[3] || "00";
+    const ampm = hh >= 12 ? "PM" : "AM";
+    const h12 = ((hh + 11) % 12) + 1;
+    return `${h12}:${mm}:${ss} ${ampm}`;
+  }
+
+  function filaResumen(label, valor, opts = {}) {
+    const vacio = !String(valor ?? "").trim() || valor === "—";
+    const valorMostrar = escaparHtml(vacio ? "—" : valor);
+    if (opts.bloque) {
+      return `<div class="span-full"><dt>${escaparHtml(label)}</dt><dd class="${
+        vacio ? "empty" : ""
+      }">${valorMostrar}</dd></div>`;
+    }
+    return `<div><dt>${escaparHtml(label)}</dt><dd class="${
+      vacio ? "empty" : ""
+    }">${valorMostrar}</dd></div>`;
+  }
+
+  function abrirResumenDia(col) {
+    const flags = [];
+    if (col.es_domingo) flags.push("Domingo");
+    if (col.es_festivo) flags.push(col.descripcion_festivo || "Festivo");
+
+    resumenDiaTitle.textContent = `Resumen · ${col.etiqueta}`;
+    resumenDiaMeta.textContent = `${col.fecha}${
+      flags.length ? " · " + flags.join(" · ") : ""
+    }`;
+
+    const pct =
+      col.minutos_parada || col.porcentaje_parada
+        ? formatPct(col.porcentaje_parada)
+        : "—";
+
+    resumenDiaBody.innerHTML = [
+      filaResumen("Hora inicio de proceso", formatearHoraResumen(col.hora_inicio_proceso)),
+      filaResumen("Hora finalización", formatearHoraResumen(col.hora_fin_proceso)),
+      filaResumen("Minutos de parada", String(col.minutos_parada ?? 0)),
+      filaResumen("Minutos de producción", String(col.minutos_produccion ?? 0)),
+      filaResumen("Porcentaje de parada", pct),
+      filaResumen("Responsable del proceso", textoOVacio(col.responsable_proceso)),
+      filaResumen(
+        "Festivo",
+        col.es_festivo
+          ? textoOVacio(col.descripcion_festivo) !== "—"
+            ? `Sí · ${col.descripcion_festivo}`
+            : "Sí"
+          : "No"
+      ),
+      filaResumen(
+        "Justificación de la parada",
+        textoOVacio(col.justificacion_parada),
+        { bloque: true }
+      ),
+    ].join("");
+
+    modalResumenDia.show();
   }
 
   function optionList(items, valueKey, labelKey, selected) {
@@ -1262,21 +1349,56 @@
     return out;
   }
 
+  function saludoSegunHora(fecha = new Date()) {
+    const h = fecha.getHours();
+    if (h < 12) return "Buenos días";
+    if (h < 19) return "Buenas tardes";
+    return "Buenas noches";
+  }
+
+  function numeroSemanaDelAnio(fechaIso) {
+    const d = new Date(`${fechaIso}T12:00:00`);
+    if (Number.isNaN(d.getTime())) return null;
+    const target = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const dayNum = target.getUTCDay() || 7;
+    target.setUTCDate(target.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
+    return Math.ceil(((target - yearStart) / 86400000 + 1) / 7);
+  }
+
+  function textoInfoSemana(fechaInicio, fechaFin) {
+    const n = numeroSemanaDelAnio(fechaInicio);
+    const rango =
+      fechaInicio && fechaFin
+        ? `Lunes ${fechaInicio} → Domingo ${fechaFin}`
+        : fechaInicio
+          ? `Semana desde ${fechaInicio}`
+          : "Semana";
+    if (n) return `Semana ${n} del año · ${rango}`;
+    return rango;
+  }
+
   function construirMensajeHorariosWhatsApp() {
     const lunVie = leerAsignacionesTexto(asignacionesList);
     const sabado = leerAsignacionesTexto(asignacionesSabadoList);
     const excepciones = excepcionesTextoLista();
-    const rango = (semanaMeta.textContent || "").trim();
     const fechaInicio = semanaFechaInicio.value || "";
+    const fechaFin = fechaInicio
+      ? (() => {
+          const d = new Date(`${fechaInicio}T12:00:00`);
+          d.setDate(d.getDate() + 6);
+          return d.toISOString().slice(0, 10);
+        })()
+      : "";
     const responsable =
       responsableDesdeAsignaciones(lunVie) ||
       responsableDesdeAsignaciones(sabado);
 
     const lineas = [
-      "*Mensaje de prueba*",
+      saludoSegunHora(),
       "",
       "*Horarios del personal*",
-      rango || (fechaInicio ? "Semana desde " + fechaInicio : "Semana"),
+      textoInfoSemana(fechaInicio, fechaFin),
       "",
       "*Lunes a viernes*",
       ...formatearLineasAsignacion(lunVie),
@@ -1290,6 +1412,7 @@
     if (responsable) {
       lineas.push("", "*Responsable del proceso:* " + responsable);
     }
+    lineas.push("", "Gracias");
     return lineas.join("\n");
   }
 
@@ -1327,8 +1450,10 @@
 
     semanaFechaInicio.value = semana.fecha_inicio;
     semanaTitle.textContent = "Horario semanal";
-    semanaMeta.textContent =
-      "Lunes " + semana.fecha_inicio + " → Domingo " + semana.fecha_fin;
+    semanaMeta.textContent = textoInfoSemana(
+      semana.fecha_inicio,
+      semana.fecha_fin
+    );
     semanaHint.textContent =
       "Un mismo empleado puede tener varios turnos. Usa Excepciones para cambios puntuales entre compañeros.";
 
@@ -1865,7 +1990,7 @@
       const hint = document.getElementById("scrollHint");
       if (hint) {
         hint.textContent =
-          "Modo visitante · solo consulta. Desplaza horizontalmente para ver todos los días";
+          "Modo visitante · clic en un día para ver el resumen · los horarios del personal no se abren";
       }
     }
     poblarSelectorMeses();
