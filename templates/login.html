@@ -30,14 +30,9 @@
         <p class="login-loading">Cargando usuarios…</p>
       </div>
 
-      <div class="login-pin-setup">
-        <button type="button" class="btn-ghost login-setup-btn" id="btnAsignarPin">
-          Asignar PIN maestro
-        </button>
-        <p class="login-setup-hint" id="pinSetupHint">
-          El PIN se configura una sola vez. Superadmin y admin lo usarán para ingresar.
-        </p>
-      </div>
+      <p class="login-setup-hint" id="pinSetupHint">
+        Admin y Superadmin tienen PIN independiente. Cada uno se asigna una sola vez.
+      </p>
     </section>
   </main>
 
@@ -55,7 +50,7 @@
         <div class="modal-body">
           <div id="pinModalAlert" class="ui-alert d-none" role="alert"></div>
           <label class="login-field">
-            <span>PIN maestro</span>
+            <span>PIN de acceso</span>
             <input
               type="password"
               id="pinInput"
@@ -77,14 +72,14 @@
     </div>
   </div>
 
-  <!-- Modal asignar PIN (una sola vez) -->
+  <!-- Modal asignar PIN (una sola vez por usuario) -->
   <div class="modal fade" id="setupPinModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <form class="modal-content glass-modal" id="setupPinForm">
         <div class="modal-header">
           <div>
-            <h2 class="modal-title">Asignar PIN maestro</h2>
-            <p class="modal-meta">Esta acción solo puede realizarse una vez</p>
+            <h2 class="modal-title">Asignar PIN</h2>
+            <p class="modal-meta" id="setupPinMeta">Esta acción solo puede realizarse una vez para este usuario</p>
           </div>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         </div>

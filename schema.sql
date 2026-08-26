@@ -129,14 +129,10 @@ CREATE TABLE usuarios (
   rol VARCHAR(20) NOT NULL COMMENT 'superadmin | admin | visitante',
   nombre VARCHAR(100) NOT NULL,
   activo BOOLEAN NOT NULL DEFAULT TRUE,
+  pin_hash VARCHAR(255) NULL,
+  pin_asignado_en DATETIME NULL,
   PRIMARY KEY (id),
   UNIQUE KEY uk_usuarios_username (username)
-) ENGINE=InnoDB;
-
-CREATE TABLE pin_maestro (
-  id TINYINT NOT NULL PRIMARY KEY,
-  pin_hash VARCHAR(255) NOT NULL,
-  asignado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
 INSERT INTO usuarios (username, rol, nombre, activo) VALUES

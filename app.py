@@ -9,12 +9,11 @@ from flask import Flask, jsonify, redirect, render_template, request, session, u
 from mysql.connector import Error
 
 from auth import (
-    asignar_pin_maestro,
+    asignar_pin_usuario,
     autenticar,
     iniciar_sesion,
     listar_usuarios_login,
     login_required,
-    pin_maestro_asignado,
     roles_required,
     usuario_actual,
 )
@@ -157,7 +156,6 @@ def create_app():
             usuarios = listar_usuarios_login()
             return jsonify(
                 {
-                    "pin_asignado": pin_maestro_asignado(),
                     "usuarios": [
                         {
                             "id": u["id"],
@@ -165,6 +163,7 @@ def create_app():
                             "rol": u["rol"],
                             "nombre": u["nombre"],
                             "requiere_pin": u["rol"] in ("superadmin", "admin"),
+                            "pin_asignado": bool(u.get("pin_hash")),
                         }
                         for u in usuarios
                     ],
@@ -176,7 +175,11 @@ def create_app():
     @app.post("/api/auth/asignar-pin")
     def api_auth_asignar_pin():
         data = request.get_json(silent=True) or {}
-        ok, error = asignar_pin_maestro(data.get("pin"), data.get("pin_confirm"))
+        ok, error = asignar_pin_usuario(
+            data.get("username"),
+            data.get("pin"),
+            data.get("pin_confirm"),
+        )
         if not ok:
             codigo = 409 if "superadmin" in (error or "").lower() else 400
             return jsonify({"error": error}), codigo

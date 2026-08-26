@@ -1,8 +1,6 @@
 (() => {
   const alertBox = document.getElementById("loginAlert");
   const userGrid = document.getElementById("userGrid");
-  const btnAsignarPin = document.getElementById("btnAsignarPin");
-  const pinSetupHint = document.getElementById("pinSetupHint");
   const toastHost = document.getElementById("uiToastHost");
 
   const pinModalEl = document.getElementById("pinModal");
@@ -18,11 +16,12 @@
   const setupPinConfirm = document.getElementById("setupPinConfirm");
   const setupPinSubmit = document.getElementById("setupPinSubmit");
   const setupPinAlert = document.getElementById("setupPinAlert");
+  const setupPinMeta = document.getElementById("setupPinMeta");
 
   const pinModal = new bootstrap.Modal(pinModalEl);
   const setupPinModal = new bootstrap.Modal(setupPinModalEl);
 
-  let pinAsignado = false;
+  let usuarios = [];
   let selectedUser = null;
 
   function showBox(el, msg, tipo = "error") {
@@ -64,28 +63,19 @@
       .join("");
   }
 
-  function actualizarBotonPin() {
-    if (pinAsignado) {
-      btnAsignarPin.textContent = "PIN maestro ya asignado";
-      btnAsignarPin.disabled = true;
-      pinSetupHint.textContent =
-        "Contacte con el superadmin para restablecer su pin.";
-    } else {
-      btnAsignarPin.textContent = "Asignar PIN maestro";
-      btnAsignarPin.disabled = false;
-      pinSetupHint.textContent =
-        "El PIN se configura una sola vez. Superadmin y admin lo usarán para ingresar.";
-    }
+  function accionUsuario(u) {
+    if (!u.requiere_pin) return "Entrar";
+    return u.pin_asignado ? "PIN" : "Asignar PIN";
   }
 
-  function renderUsuarios(usuarios) {
+  function renderUsuarios(lista) {
     userGrid.innerHTML = "";
-    if (!usuarios.length) {
+    if (!lista.length) {
       userGrid.innerHTML =
         '<p class="login-loading">No hay usuarios. Ejecuta migrate_usuarios.sql</p>';
       return;
     }
-    usuarios.forEach((u) => {
+    lista.forEach((u) => {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "user-pick";
@@ -95,9 +85,9 @@
         <span class="user-pick-avatar" aria-hidden="true">${iniciales(u.nombre)}</span>
         <span class="user-pick-text">
           <strong>${u.nombre}</strong>
-          <span>${u.rol}</span>
+          <span>${u.rol}${u.requiere_pin ? (u.pin_asignado ? " · PIN listo" : " · sin PIN") : ""}</span>
         </span>
-        <span class="user-pick-action">${u.requiere_pin ? "PIN" : "Entrar"}</span>
+        <span class="user-pick-action">${accionUsuario(u)}</span>
       `;
       btn.addEventListener("click", () => onSelectUser(u));
       userGrid.appendChild(btn);
@@ -112,9 +102,8 @@
       if (!res.ok) {
         throw new Error(data.error || "No se pudo cargar el acceso");
       }
-      pinAsignado = Boolean(data.pin_asignado);
-      actualizarBotonPin();
-      renderUsuarios(data.usuarios || []);
+      usuarios = data.usuarios || [];
+      renderUsuarios(usuarios);
     } catch (err) {
       userGrid.innerHTML = "";
       showBox(alertBox, err.message || "Error al cargar", "error");
@@ -135,6 +124,25 @@
     return data;
   }
 
+  function abrirSetupPin(user) {
+    selectedUser = user;
+    clearBox(setupPinAlert);
+    setupPin.value = "";
+    setupPinConfirm.value = "";
+    setupPinMeta.textContent = `${user.nombre} · se asigna una sola vez`;
+    setupPinModal.show();
+    setTimeout(() => setupPin.focus(), 250);
+  }
+
+  function abrirIngresoPin(user) {
+    selectedUser = user;
+    clearBox(pinModalAlert);
+    pinInput.value = "";
+    pinModalMeta.textContent = `${user.nombre} · ${user.rol}`;
+    pinModal.show();
+    setTimeout(() => pinInput.focus(), 250);
+  }
+
   async function onSelectUser(user) {
     clearBox(alertBox);
     selectedUser = user;
@@ -152,19 +160,12 @@
       return;
     }
 
-    if (!pinAsignado) {
-      const msg =
-        "Primero debes asignar el PIN maestro con el botón de abajo.";
-      showBox(alertBox, msg, "warn");
-      toast(msg, "warn", "PIN no configurado");
+    if (!user.pin_asignado) {
+      abrirSetupPin(user);
       return;
     }
 
-    clearBox(pinModalAlert);
-    pinInput.value = "";
-    pinModalMeta.textContent = `${user.nombre} · ${user.rol}`;
-    pinModal.show();
-    setTimeout(() => pinInput.focus(), 250);
+    abrirIngresoPin(user);
   }
 
   pinForm.addEventListener("submit", async (event) => {
@@ -192,21 +193,6 @@
     }
   });
 
-  btnAsignarPin.addEventListener("click", () => {
-    clearBox(alertBox);
-    if (pinAsignado) {
-      const msg = "Contacte con el superadmin para restablecer su pin";
-      showBox(alertBox, msg, "warn");
-      toast(msg, "warn", "PIN ya asignado");
-      return;
-    }
-    clearBox(setupPinAlert);
-    setupPin.value = "";
-    setupPinConfirm.value = "";
-    setupPinModal.show();
-    setTimeout(() => setupPin.focus(), 250);
-  });
-
   setupPinForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     clearBox(setupPinAlert);
@@ -227,23 +213,32 @@
       const res = await fetch("/api/auth/asignar-pin", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ pin, pin_confirm: confirm }),
+        body: JSON.stringify({
+          username: selectedUser.username,
+          pin,
+          pin_confirm: confirm,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(data.error || "No se pudo asignar el PIN");
       }
-      pinAsignado = true;
-      actualizarBotonPin();
+      selectedUser.pin_asignado = true;
+      const idx = usuarios.findIndex((u) => u.username === selectedUser.username);
+      if (idx >= 0) usuarios[idx].pin_asignado = true;
+      renderUsuarios(usuarios);
       setupPinModal.hide();
-      showBox(alertBox, "PIN maestro asignado correctamente.", "ok");
-      toast("Ya puedes ingresar como admin o superadmin", "ok", "PIN guardado");
+      showBox(alertBox, `PIN de ${selectedUser.nombre} asignado. Ahora puedes ingresar.`, "ok");
+      toast("PIN guardado para este usuario", "ok", "Listo");
+      abrirIngresoPin(selectedUser);
     } catch (err) {
       showBox(setupPinAlert, err.message, "error");
       toast(err.message, "error");
       if (/superadmin/i.test(err.message)) {
-        pinAsignado = true;
-        actualizarBotonPin();
+        selectedUser.pin_asignado = true;
+        const idx = usuarios.findIndex((u) => u.username === selectedUser.username);
+        if (idx >= 0) usuarios[idx].pin_asignado = true;
+        renderUsuarios(usuarios);
       }
     } finally {
       setupPinSubmit.disabled = false;

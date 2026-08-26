@@ -116,23 +116,11 @@
   white-space: nowrap;
 }
 
-.login-pin-setup {
-  margin-top: 1.15rem;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(20, 50, 40, 0.1);
-  display: grid;
-  gap: 0.45rem;
-  justify-items: center;
+.login-setup-hint {
+  margin: 1rem 0 0;
   text-align: center;
-}
-
-.login-setup-btn {
-  width: 100%;
-}
-
-.login-setup-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
+  color: var(--muted);
+  font-size: 0.86rem;
 }
 
 .login-field {
