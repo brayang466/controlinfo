@@ -5,7 +5,7 @@
 
   const mesSelect = document.getElementById("mesSelect");
   const btnRecargar = document.getElementById("btnRecargar");
-  const btnPrecargar = document.getElementById("btnPrecargar");
+  const btnProcesoSinNovedad = document.getElementById("btnProcesoSinNovedad");
   const btnCatalogos = document.getElementById("btnCatalogos");
   const btnVerificarMes = document.getElementById("btnVerificarMes");
   const statusBar = document.getElementById("statusBar");
@@ -1436,6 +1436,108 @@
     setStatus("WhatsApp abierto · elige el grupo y pulsa Enviar");
   }
 
+  function hoyIsoLocal() {
+    const n = new Date();
+    return `${n.getFullYear()}-${pad2(n.getMonth() + 1)}-${pad2(n.getDate())}`;
+  }
+
+  function formatearHoraClick(fecha = new Date()) {
+    const hh = fecha.getHours();
+    const mm = pad2(fecha.getMinutes());
+    const ss = pad2(fecha.getSeconds());
+    const ampm = hh >= 12 ? "PM" : "AM";
+    const h12 = ((hh + 11) % 12) + 1;
+    return `${h12}:${mm}:${ss} ${ampm}`;
+  }
+
+  function formatearFechaCorta(fechaIso) {
+    const d = fechaLocal(fechaIso);
+    if (Number.isNaN(d.getTime())) return fechaIso;
+    return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+  }
+
+  function semanaPorFecha(fechaIso) {
+    return (estado.semanas || []).find(
+      (s) => fechaIso >= s.fecha_inicio && fechaIso <= s.fecha_fin
+    );
+  }
+
+  function responsableProcesoParaFecha(fechaIso) {
+    const semana = semanaPorFecha(fechaIso);
+    const col = (estado.columnas || []).find((c) => c.fecha === fechaIso);
+    if (col && String(col.responsable_proceso || "").trim()) {
+      return String(col.responsable_proceso).trim().toUpperCase();
+    }
+    if (!semana) return "";
+    const wd = fechaLocal(fechaIso).getDay();
+    if (wd === 6) {
+      return String(
+        semana.responsable_sabado || semana.responsable_proceso || ""
+      )
+        .trim()
+        .toUpperCase();
+    }
+    return String(semana.responsable_proceso || "").trim().toUpperCase();
+  }
+
+  function construirMensajeProcesoSinNovedad(ahora = new Date()) {
+    const fechaIso = hoyIsoLocal();
+    const responsable = responsableProcesoParaFecha(fechaIso);
+    const semana = semanaPorFecha(fechaIso);
+    const lineas = [
+      saludoSegunHora(ahora),
+      "",
+      "El proceso de beneficio *finalizó sin novedad*.",
+      "",
+      `*Fecha:* ${formatearFechaCorta(fechaIso)}`,
+      `*Hora de confirmación:* ${formatearHoraClick(ahora)}`,
+    ];
+    if (semana) {
+      const n = semana.semana_anio || numeroSemanaDelAnio(semana.fecha_inicio);
+      if (n) lineas.push(`*Semana:* ${n} del año`);
+    }
+    lineas.push(
+      "",
+      `*Enviado por:* ${responsable || "(sin responsable asignado)"}`,
+      "_Responsable del proceso (Horarios del personal)_",
+      "",
+      "Gracias"
+    );
+    return { mensaje: lineas.join("\n"), responsable, fechaIso, semana };
+  }
+
+  function enviarProcesoSinNovedadWhatsApp() {
+    const ahora = new Date();
+    const { mensaje, responsable, fechaIso, semana } =
+      construirMensajeProcesoSinNovedad(ahora);
+
+    if (!semana) {
+      const msg =
+        "No hay datos de la semana actual en el mes cargado. Cambia al mes de hoy y pulsa Actualizar.";
+      mostrarToast(msg, "warn", "Sin semana");
+      setStatus(msg, true);
+      return;
+    }
+    if (!responsable) {
+      const msg =
+        "No hay responsable del proceso en Horarios del personal para hoy (turno Planta).";
+      mostrarToast(msg, "warn", "Falta responsable");
+      setStatus(msg, true);
+      return;
+    }
+
+    const url = "https://wa.me/?text=" + encodeURIComponent(mensaje);
+    window.open(url, "_blank", "noopener,noreferrer");
+    mostrarToast(
+      `WhatsApp abierto · confirmación de ${responsable}`,
+      "ok",
+      "Proceso sin novedad"
+    );
+    setStatus(
+      `Confirmación WA · ${responsable} · ${formatearFechaCorta(fechaIso)} ${formatearHoraClick(ahora)}`
+    );
+  }
+
   function abrirEditorSemana(semana) {
     if (!puedeEditarHorarios) {
       mostrarToast(
@@ -1966,24 +2068,16 @@
       setStatus(err.message + " · Ejecuta migrate_horarios.sql en MariaDB", true);
     }
   });
-  btnPrecargar.addEventListener("click", async () => {
-    setStatus("Precargando 2026…");
-    try {
-      const res = await api("/api/calendario/precargar", {
-        method: "POST",
-        body: JSON.stringify({ anio: 2026 }),
-      });
-      await cargarReporte();
-      setStatus(`Calendario listo · ${res.dias_creados} días nuevos`);
-    } catch (err) {
-      setStatus(err.message, true);
-    }
-  });
+  if (btnProcesoSinNovedad) {
+    btnProcesoSinNovedad.addEventListener("click", enviarProcesoSinNovedadWhatsApp);
+  }
   mesSelect.addEventListener("change", cargarReporte);
 
   (async function init() {
+    if (soloLectura && btnProcesoSinNovedad) {
+      btnProcesoSinNovedad.classList.add("d-none");
+    }
     if (!puedeEditarTodo) {
-      if (btnPrecargar) btnPrecargar.classList.add("d-none");
       if (btnCatalogos && !puedeEditarHorarios) btnCatalogos.classList.add("d-none");
     }
     if (soloLectura) {
