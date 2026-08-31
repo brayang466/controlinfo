@@ -2074,9 +2074,6 @@
   mesSelect.addEventListener("change", cargarReporte);
 
   (async function init() {
-    if (soloLectura && btnProcesoSinNovedad) {
-      btnProcesoSinNovedad.classList.add("d-none");
-    }
     if (!puedeEditarTodo) {
       if (btnCatalogos && !puedeEditarHorarios) btnCatalogos.classList.add("d-none");
     }
