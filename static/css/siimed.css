@@ -1,0 +1,275 @@
+:root {
+  --ink: #142033;
+  --muted: #667788;
+  --blue: #1f5aa8;
+  --lime: #8bc53f;
+  --header: #d8f0c8;
+  --cols: #f7d4d0;
+  --line: rgba(20, 32, 51, 0.1);
+}
+
+* { box-sizing: border-box; }
+
+body.siimed-body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Outfit, system-ui, sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(900px 420px at 10% -10%, rgba(139, 197, 63, 0.18), transparent 60%),
+    radial-gradient(700px 380px at 100% 0%, rgba(31, 90, 168, 0.14), transparent 55%),
+    #f5f8fb;
+}
+
+.siimed-shell {
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 1.25rem 0 2rem;
+}
+
+.siimed-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.siimed-brand {
+  display: flex;
+  gap: 0.85rem;
+  align-items: center;
+}
+
+.siimed-brand img {
+  width: 132px;
+  height: auto;
+}
+
+.siimed-brand h1 {
+  margin: 0;
+  font-size: clamp(1.05rem, 2.4vw, 1.35rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.siimed-brand p {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.siimed-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.siimed-actions label {
+  display: grid;
+  gap: 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.siimed-actions select {
+  min-width: 8rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.45rem 0.55rem;
+  font: inherit;
+  background: #fff;
+}
+
+.btn-lime,
+.btn-ghost,
+.btn-blue {
+  border-radius: 999px;
+  padding: 0.5rem 0.95rem;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.86rem;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: none;
+}
+
+.btn-lime {
+  color: #fff;
+  background: var(--lime);
+  box-shadow: 0 8px 18px rgba(139, 197, 63, 0.28);
+}
+
+.btn-blue {
+  color: #fff;
+  background: var(--blue);
+}
+
+.btn-ghost {
+  color: var(--blue);
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(31, 90, 168, 0.22);
+}
+
+.siimed-panel {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 18px 40px rgba(20, 32, 51, 0.08);
+}
+
+.siimed-titlebar {
+  background: var(--header);
+  text-align: center;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 0.7rem 1rem;
+  font-size: 0.95rem;
+}
+
+.siimed-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.siimed-meta .error { color: #b42318; font-weight: 700; }
+
+.siimed-table-wrap {
+  overflow: auto;
+  max-height: min(62vh, 720px);
+}
+
+.siimed-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 980px;
+}
+
+.siimed-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--cols);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.65rem 0.55rem;
+  border-bottom: 1px solid rgba(180, 80, 70, 0.25);
+  white-space: nowrap;
+}
+
+.siimed-table td {
+  padding: 0.55rem;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.88rem;
+  vertical-align: top;
+}
+
+.siimed-table td.num {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: center;
+}
+
+.siimed-table td.motivo {
+  max-width: 16rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.siimed-table td.acciones {
+  white-space: nowrap;
+}
+
+.chip {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(31, 90, 168, 0.1);
+  color: var(--blue);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.btn-mini {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 8px;
+  padding: 0.25rem 0.45rem;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-right: 0.25rem;
+}
+
+.btn-mini.danger {
+  color: #b42318;
+  border-color: rgba(180, 35, 24, 0.25);
+}
+
+.siimed-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--muted);
+}
+
+.siimed-toast-host {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  display: grid;
+  gap: 0.45rem;
+  z-index: 1080;
+}
+
+.siimed-toast {
+  min-width: 220px;
+  max-width: 360px;
+  padding: 0.7rem 0.9rem;
+  border-radius: 12px;
+  background: #14301f;
+  color: #fff;
+  font-size: 0.86rem;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+}
+
+.siimed-toast.error { background: #8f1d16; }
+
+.glass-modal .modal-header {
+  background: linear-gradient(110deg, #1f5aa8, #2f7ad1);
+  color: #fff;
+}
+
+.glass-modal .btn-close { filter: invert(1); }
+
+.form-alert {
+  margin-bottom: 0.75rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  background: rgba(180, 35, 24, 0.08);
+  color: #8f1d16;
+  font-size: 0.86rem;
+}
+
+@media (max-width: 720px) {
+  .siimed-brand {
+    width: 100%;
+  }
+  .siimed-actions {
+    width: 100%;
+  }
+}

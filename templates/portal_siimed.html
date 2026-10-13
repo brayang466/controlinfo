@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portal solicitudes Siimed</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/siimed.css') }}" />
+</head>
+<body class="siimed-body">
+  <div class="siimed-shell">
+    <header class="siimed-top">
+      <div class="siimed-brand">
+        <img src="{{ url_for('static', filename='img/siimed-logo.svg') }}" alt="Siimed" />
+        <div>
+          <h1>Portal solicitudes Siimed</h1>
+          <p>Registro mensual de anulación o eliminación de documentos</p>
+        </div>
+      </div>
+      <div class="siimed-actions">
+        <label>
+          Año
+          <select id="anioSelect" aria-label="Año"></select>
+        </label>
+        <label>
+          Mes
+          <select id="mesSelect" aria-label="Mes"></select>
+        </label>
+        <button type="button" class="btn-ghost" id="btnFiltrar">Actualizar</button>
+        <button type="button" class="btn-lime" id="btnNuevo">+ Nuevo registro</button>
+        <a class="btn-ghost" href="{{ url_for('login') }}">← Login</a>
+      </div>
+    </header>
+
+    <section class="siimed-panel">
+      <div class="siimed-titlebar">ANULACIÓN O ELIMINACIÓN DE DOCUMENTOS SIIMED</div>
+      <div class="siimed-meta">
+        <span id="resumenMes">Cargando…</span>
+        <span id="statusBar" role="status"></span>
+      </div>
+      <div class="siimed-table-wrap">
+        <table class="siimed-table" aria-label="Registros Siimed del mes">
+          <thead>
+            <tr>
+              <th>Departamento</th>
+              <th>Área</th>
+              <th>Tipo de documento</th>
+              <th>Cantidad</th>
+              <th>Número de documento</th>
+              <th>Acción</th>
+              <th>Mes</th>
+              <th>Motivo</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div id="emptyState" class="siimed-empty d-none">
+        No hay registros para este mes. Usa <strong>+ Nuevo registro</strong> para digitarlos.
+      </div>
+    </section>
+  </div>
+
+  <div class="modal fade" id="docModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <form class="modal-content glass-modal" id="docForm">
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="modalTitle">Nuevo registro</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div id="formAlert" class="form-alert d-none" role="alert"></div>
+          <input type="hidden" id="docId" />
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="fDepartamento">Departamento</label>
+              <input class="form-control" id="fDepartamento" required maxlength="100" />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="fArea">Área</label>
+              <input class="form-control" id="fArea" required maxlength="100" />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="fTipo">Tipo de documento</label>
+              <input class="form-control" id="fTipo" required maxlength="120" />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" for="fCantidad">Cantidad</label>
+              <input class="form-control" id="fCantidad" type="number" min="1" step="1" value="1" required />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" for="fAccion">Acción</label>
+              <select class="form-select" id="fAccion" required>
+                <option value="">—</option>
+                <option value="Anulación">Anulación</option>
+                <option value="Eliminación">Eliminación</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="fNumero">Número de documento</label>
+              <input class="form-control" id="fNumero" required maxlength="120" />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" for="fMes">Mes</label>
+              <select class="form-select" id="fMes" required></select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" for="fAnio">Año</label>
+              <select class="form-select" id="fAnio" required></select>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="fMotivo">Motivo</label>
+              <textarea class="form-control" id="fMotivo" rows="2" maxlength="500"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn-blue">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toastHost" class="siimed-toast-host" aria-live="polite"></div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="{{ url_for('static', filename='js/siimed.js') }}"></script>
+</body>
+</html>

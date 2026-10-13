@@ -33,6 +33,25 @@
       <p class="login-setup-hint" id="pinSetupHint">
         Admin y Superadmin tienen PIN independiente. Cada uno se asigna una sola vez.
       </p>
+
+      <a
+        class="siimed-portal-btn"
+        href="{{ url_for('portal_siimed') }}"
+        aria-label="Ir al Portal de solicitudes Siimed"
+      >
+        <img
+          class="siimed-portal-logo"
+          src="{{ url_for('static', filename='img/siimed-logo.svg') }}"
+          alt="Siimed"
+          width="110"
+          height="30"
+        />
+        <span class="siimed-portal-text">
+          <strong>Portal solicitudes Siimed</strong>
+          <small>Gestión de solicitudes de usuarios</small>
+        </span>
+        <span class="siimed-portal-arrow" aria-hidden="true">→</span>
+      </a>
     </section>
   </main>
 

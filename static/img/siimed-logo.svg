@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 80" fill="none" aria-hidden="true">
+  <text
+    x="6"
+    y="58"
+    font-family="Arial Black, Arial, Helvetica, sans-serif"
+    font-size="48"
+    font-style="italic"
+    font-weight="800"
+    fill="#1f5aa8"
+    letter-spacing="-1"
+  >Siimed</text>
+  <circle cx="70" cy="20" r="5.5" fill="#8bc53f"/>
+  <circle cx="98" cy="20" r="5.5" fill="#8bc53f"/>
+  <circle cx="258" cy="40" r="26" fill="#8bc53f"/>
+  <path
+    d="M244 49 L272 26"
+    stroke="#ffffff"
+    stroke-width="7"
+    stroke-linecap="round"
+  />
+  <path
+    d="M258 26 H272 V40"
+    stroke="#ffffff"
+    stroke-width="7"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+  />
+</svg>

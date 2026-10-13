@@ -150,6 +150,146 @@ def create_app():
             return redirect(url_for("index"))
         return render_template("login.html")
 
+    @app.route("/portal-siimed")
+    def portal_siimed():
+        """Portal de solicitudes Siimed (anulación/eliminación de documentos)."""
+        return render_template("portal_siimed.html")
+
+    @app.get("/api/siimed/documentos")
+    def api_siimed_listar():
+        try:
+            anio = int(request.args.get("anio") or date.today().year)
+            mes = int(request.args.get("mes") or date.today().month)
+        except (TypeError, ValueError):
+            return jsonify({"error": "Año o mes inválido"}), 400
+        if mes < 1 or mes > 12:
+            return jsonify({"error": "Mes inválido"}), 400
+        try:
+            rows = fetch_all(
+                """
+                SELECT id, anio, mes, departamento, area, tipo_documento, cantidad,
+                       numero_documento, accion, motivo, creado_en, actualizado_en
+                FROM siimed_documentos
+                WHERE anio = %s AND mes = %s
+                ORDER BY id DESC
+                """,
+                (anio, mes),
+            )
+            for r in rows:
+                for key in ("creado_en", "actualizado_en"):
+                    if r.get(key) is not None:
+                        r[key] = r[key].isoformat(sep=" ", timespec="seconds")
+            return jsonify({"anio": anio, "mes": mes, "documentos": rows})
+        except Error as exc:
+            return jsonify({"error": f"Error de base de datos: {exc}"}), 500
+
+    def _payload_siimed(data):
+        try:
+            anio = int(data.get("anio"))
+            mes = int(data.get("mes"))
+            cantidad = int(data.get("cantidad") or 1)
+        except (TypeError, ValueError):
+            return None, "Año, mes o cantidad inválidos"
+        if mes < 1 or mes > 12:
+            return None, "Mes inválido"
+        if cantidad < 1:
+            return None, "La cantidad debe ser al menos 1"
+        departamento = (data.get("departamento") or "").strip()
+        area = (data.get("area") or "").strip()
+        tipo_documento = (data.get("tipo_documento") or "").strip()
+        numero_documento = (data.get("numero_documento") or "").strip()
+        accion = (data.get("accion") or "").strip()
+        motivo = (data.get("motivo") or "").strip() or None
+        if not all([departamento, area, tipo_documento, numero_documento, accion]):
+            return None, "Completa departamento, área, tipo, número y acción"
+        return {
+            "anio": anio,
+            "mes": mes,
+            "departamento": departamento[:100],
+            "area": area[:100],
+            "tipo_documento": tipo_documento[:120],
+            "cantidad": cantidad,
+            "numero_documento": numero_documento[:120],
+            "accion": accion[:80],
+            "motivo": (motivo[:500] if motivo else None),
+        }, None
+
+    @app.post("/api/siimed/documentos")
+    def api_siimed_crear():
+        data = request.get_json(silent=True) or {}
+        payload, error = _payload_siimed(data)
+        if error:
+            return jsonify({"error": error}), 400
+        try:
+            new_id = execute(
+                """
+                INSERT INTO siimed_documentos (
+                  anio, mes, departamento, area, tipo_documento, cantidad,
+                  numero_documento, accion, motivo
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    payload["anio"],
+                    payload["mes"],
+                    payload["departamento"],
+                    payload["area"],
+                    payload["tipo_documento"],
+                    payload["cantidad"],
+                    payload["numero_documento"],
+                    payload["accion"],
+                    payload["motivo"],
+                ),
+            )
+            return jsonify({"ok": True, "id": new_id}), 201
+        except Error as exc:
+            return jsonify({"error": f"Error de base de datos: {exc}"}), 500
+
+    @app.put("/api/siimed/documentos/<int:doc_id>")
+    def api_siimed_actualizar(doc_id):
+        data = request.get_json(silent=True) or {}
+        payload, error = _payload_siimed(data)
+        if error:
+            return jsonify({"error": error}), 400
+        try:
+            existe = fetch_one("SELECT id FROM siimed_documentos WHERE id = %s", (doc_id,))
+            if not existe:
+                return jsonify({"error": "Registro no encontrado"}), 404
+            execute(
+                """
+                UPDATE siimed_documentos
+                SET anio = %s, mes = %s, departamento = %s, area = %s,
+                    tipo_documento = %s, cantidad = %s, numero_documento = %s,
+                    accion = %s, motivo = %s
+                WHERE id = %s
+                """,
+                (
+                    payload["anio"],
+                    payload["mes"],
+                    payload["departamento"],
+                    payload["area"],
+                    payload["tipo_documento"],
+                    payload["cantidad"],
+                    payload["numero_documento"],
+                    payload["accion"],
+                    payload["motivo"],
+                    doc_id,
+                ),
+            )
+            return jsonify({"ok": True})
+        except Error as exc:
+            return jsonify({"error": f"Error de base de datos: {exc}"}), 500
+
+    @app.delete("/api/siimed/documentos/<int:doc_id>")
+    def api_siimed_eliminar(doc_id):
+        try:
+            existe = fetch_one("SELECT id FROM siimed_documentos WHERE id = %s", (doc_id,))
+            if not existe:
+                return jsonify({"error": "Registro no encontrado"}), 404
+            execute("DELETE FROM siimed_documentos WHERE id = %s", (doc_id,))
+            return jsonify({"ok": True})
+        except Error as exc:
+            return jsonify({"error": f"Error de base de datos: {exc}"}), 500
+
     @app.get("/api/auth/estado")
     def api_auth_estado():
         try:

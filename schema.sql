@@ -140,6 +140,23 @@ INSERT INTO usuarios (username, rol, nombre, activo) VALUES
   ('admin', 'admin', 'Administrador', TRUE),
   ('visitante', 'visitante', 'Visitante', TRUE);
 
+CREATE TABLE siimed_documentos (
+  id INT NOT NULL AUTO_INCREMENT,
+  anio SMALLINT NOT NULL,
+  mes TINYINT NOT NULL,
+  departamento VARCHAR(100) NOT NULL,
+  area VARCHAR(100) NOT NULL,
+  tipo_documento VARCHAR(120) NOT NULL,
+  cantidad INT NOT NULL DEFAULT 1,
+  numero_documento VARCHAR(120) NOT NULL,
+  accion VARCHAR(80) NOT NULL,
+  motivo VARCHAR(500) NULL,
+  creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  actualizado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_siimed_periodo (anio, mes)
+) ENGINE=InnoDB;
+
 CREATE INDEX idx_dias_calendario_fecha ON dias_calendario (fecha);
 CREATE INDEX idx_horarios_semana_rango ON horarios_semana (fecha_inicio, fecha_fin);
 
