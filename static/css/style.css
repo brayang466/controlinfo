@@ -351,6 +351,27 @@ body.role-readonly .week-cell.editable:hover {
   background: var(--festivo);
   color: var(--festivo-ink);
 }
+.sheet thead th.day-head.festivo {
+  background: linear-gradient(180deg, #ffe8e3 0%, #fff6f4 100%);
+  color: var(--festivo-ink);
+}
+.sheet thead th.day-head .day-label {
+  display: block;
+  line-height: 1.15;
+}
+.sheet thead th.day-head .day-festivo-tag {
+  display: inline-block;
+  margin-top: 0.18rem;
+  padding: 0.08rem 0.35rem;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--festivo-ink);
+  line-height: 1.2;
+}
 
 .sheet tbody tr:nth-child(even) .sticky-col { background: #d5e5db; }
 .sheet tbody tr:nth-child(even) td:not(.sticky-col):not(.special):not(.week-cell) {

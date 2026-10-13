@@ -518,14 +518,22 @@
     return fechaLocal(fechaIso).getDay() === 0;
   }
 
+  function esDomingoCol(col) {
+    return Boolean(col.es_domingo || esDomingoFecha(col.fecha));
+  }
+
+  function esFestivoLaborable(col) {
+    // Festivo que se trabaja con normalidad (no domingo)
+    return Boolean(col.es_festivo) && !esDomingoCol(col);
+  }
+
   function esEspecial(col) {
-    // Festivo por BD; domingo por BD o por calendario real (2026)
-    return Boolean(col.es_festivo || col.es_domingo || esDomingoFecha(col.fecha));
+    // Solo domingo bloquea la columna; los festivos se diligencian como día normal
+    return esDomingoCol(col);
   }
 
   function etiquetaEspecial(col) {
-    if (col.es_festivo) return "FESTIVO";
-    if (col.es_domingo || esDomingoFecha(col.fecha)) return "DOMINGO";
+    if (esDomingoCol(col)) return "DOMINGO";
     return "";
   }
 
@@ -599,7 +607,7 @@
 
   function verificarMesActual() {
     const cols = estado.columnas || [];
-    const habiles = cols.filter((col) => !esEspecial(col));
+    const habiles = cols.filter((col) => !esDomingoCol(col));
     const pendientesProduccion = [];
     const pendientesHorario = [];
     const pendientesAmbos = [];
@@ -609,7 +617,9 @@
       const okHor = tieneHorarioPersonal(col);
       if (okProd && okHor) continue;
       const item = {
-        etiqueta: col.etiqueta,
+        etiqueta: esFestivoLaborable(col)
+          ? `${col.etiqueta} (festivo)`
+          : col.etiqueta,
         fecha: col.fecha,
         faltaProduccion: !okProd,
         faltaHorario: !okHor,
@@ -629,7 +639,7 @@
 
     verificarMesTitle.textContent = `Verificación · ${mesNombre} ${anio}`;
     verificarMesMeta.textContent =
-      "Días hábiles (excluye festivos y domingos) · Minutos de producción y Horarios del personal";
+      "Días hábiles (incluye festivos laborables; excluye solo domingos) · Minutos de producción y Horarios del personal";
 
     verificarMesResumen.className =
       "verify-summary" + (totalPendientes ? " incomplete" : "");
@@ -711,9 +721,21 @@
 
     for (const col of cols) {
       const th = document.createElement("th");
-      th.className = "day-head" + (esEspecial(col) ? " special" : "");
-      th.textContent = col.etiqueta;
-      th.title = col.descripcion_festivo || col.fecha;
+      th.className = "day-head";
+      if (esDomingoCol(col)) th.classList.add("special");
+      else if (esFestivoLaborable(col)) th.classList.add("festivo");
+
+      if (esFestivoLaborable(col)) {
+        const desc = String(col.descripcion_festivo || "").trim();
+        th.innerHTML = `
+          <span class="day-label">${col.etiqueta}</span>
+          <span class="day-festivo-tag">Festivo</span>
+        `;
+        th.title = desc || "Día festivo · se labora con normalidad";
+      } else {
+        th.textContent = col.etiqueta;
+        th.title = col.descripcion_festivo || col.fecha;
+      }
       th.addEventListener("click", () => abrirEditorDia(col));
       headerRow.appendChild(th);
     }
@@ -731,7 +753,7 @@
         const td = document.createElement("td");
         td.className = "editable";
 
-        // Domingos/festivos: misma etiqueta en TODAS las filas (alineada a la columna)
+        // Solo domingo: etiqueta en toda la columna (no se labora)
         if (esEspecial(col)) {
           td.classList.add("special");
           td.textContent = etiquetaEspecial(col);
