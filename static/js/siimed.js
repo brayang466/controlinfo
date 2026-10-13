@@ -5,6 +5,45 @@
     "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
   ];
 
+  const DEPARTAMENTOS = [
+    "ADMINISTRACION Y FINANZAS",
+    "PRODUCCION",
+    "JURIDICA Y GESTION HUMANA",
+    "COMERCIAL",
+  ];
+
+  const AREAS = [
+    "Contabilidad",
+    "Compras",
+    "Juridica",
+    "Almacen",
+    "Nomina",
+    "Tesoreria",
+    "Logistica",
+    "Comercial",
+    "Cartera",
+  ];
+
+  const TIPOS_DOCUMENTO = [
+    { codigo: "A", nombre: "Ajuste por Inflación" },
+    { codigo: "C", nombre: "Nota Crédito" },
+    { codigo: "D", nombre: "Nota Débito" },
+    { codigo: "DE", nombre: "Nota Débito Electrónica" },
+    { codigo: "E", nombre: "Nota de Entrada" },
+    { codigo: "F", nombre: "Factura de Venta" },
+    { codigo: "G", nombre: "Egreso" },
+    { codigo: "H", nombre: "Nota de Salida" },
+    { codigo: "J", nombre: "Devolución" },
+    { codigo: "L", nombre: "Otros" },
+    { codigo: "N", nombre: "Nota Interna" },
+    { codigo: "O", nombre: "Nota Producción" },
+    { codigo: "P", nombre: "Registro Compra" },
+    { codigo: "R", nombre: "Recibo de Caja" },
+    { codigo: "S", nombre: "Nota de Remisión" },
+    { codigo: "T", nombre: "Nota de Traslado" },
+    { codigo: "U", nombre: "Devolución de Compra" },
+  ];
+
   const anioSelect = document.getElementById("anioSelect");
   const mesSelect = document.getElementById("mesSelect");
   const btnFiltrar = document.getElementById("btnFiltrar");
@@ -72,6 +111,45 @@
     };
   }
 
+  function etiquetaTipo(tipo) {
+    return `${tipo.codigo} — ${tipo.nombre}`;
+  }
+
+  function fillSelect(select, items, placeholder) {
+    select.innerHTML = "";
+    const empty = document.createElement("option");
+    empty.value = "";
+    empty.textContent = placeholder;
+    select.appendChild(empty);
+    for (const item of items) {
+      const opt = document.createElement("option");
+      if (typeof item === "string") {
+        opt.value = item;
+        opt.textContent = item;
+      } else {
+        opt.value = etiquetaTipo(item);
+        opt.textContent = etiquetaTipo(item);
+      }
+      select.appendChild(opt);
+    }
+  }
+
+  function asegurarOpcion(select, value) {
+    const v = String(value || "").trim();
+    if (!v) {
+      select.value = "";
+      return;
+    }
+    const existe = Array.from(select.options).some((o) => o.value === v);
+    if (!existe) {
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = v;
+      select.appendChild(opt);
+    }
+    select.value = v;
+  }
+
   function poblarSelectores() {
     const now = new Date();
     const y = now.getFullYear();
@@ -104,6 +182,10 @@
       o.textContent = String(a);
       fields.anio.appendChild(o);
     }
+
+    fillSelect(fields.departamento, DEPARTAMENTOS, "Selecciona departamento…");
+    fillSelect(fields.area, AREAS, "Selecciona área…");
+    fillSelect(fields.tipo_documento, TIPOS_DOCUMENTO, "Selecciona tipo…");
   }
 
   async function api(url, options = {}) {
@@ -169,6 +251,9 @@
     modalTitle.textContent = "Nuevo registro";
     const { anio, mes } = periodoActual();
     form.reset();
+    fillSelect(fields.departamento, DEPARTAMENTOS, "Selecciona departamento…");
+    fillSelect(fields.area, AREAS, "Selecciona área…");
+    fillSelect(fields.tipo_documento, TIPOS_DOCUMENTO, "Selecciona tipo…");
     fields.cantidad.value = "1";
     fields.anio.value = String(anio);
     fields.mes.value = String(mes);
@@ -181,9 +266,12 @@
     clearFormAlert();
     docId.value = String(r.id);
     modalTitle.textContent = "Editar registro";
-    fields.departamento.value = r.departamento || "";
-    fields.area.value = r.area || "";
-    fields.tipo_documento.value = r.tipo_documento || "";
+    fillSelect(fields.departamento, DEPARTAMENTOS, "Selecciona departamento…");
+    fillSelect(fields.area, AREAS, "Selecciona área…");
+    fillSelect(fields.tipo_documento, TIPOS_DOCUMENTO, "Selecciona tipo…");
+    asegurarOpcion(fields.departamento, r.departamento);
+    asegurarOpcion(fields.area, r.area);
+    asegurarOpcion(fields.tipo_documento, r.tipo_documento);
     fields.cantidad.value = String(r.cantidad ?? 1);
     fields.numero_documento.value = r.numero_documento || "";
     fields.accion.value = r.accion || "";

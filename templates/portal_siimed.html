@@ -67,61 +67,97 @@
   </div>
 
   <div class="modal fade" id="docModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-      <form class="modal-content glass-modal" id="docForm">
-        <div class="modal-header">
-          <h2 class="modal-title fs-5" id="modalTitle">Nuevo registro</h2>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-        </div>
-        <div class="modal-body">
-          <div id="formAlert" class="form-alert d-none" role="alert"></div>
-          <input type="hidden" id="docId" />
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label class="form-label" for="fDepartamento">Departamento</label>
-              <input class="form-control" id="fDepartamento" required maxlength="100" />
-            </div>
-            <div class="col-md-6">
-              <label class="form-label" for="fArea">Área</label>
-              <input class="form-control" id="fArea" required maxlength="100" />
-            </div>
-            <div class="col-md-6">
-              <label class="form-label" for="fTipo">Tipo de documento</label>
-              <input class="form-control" id="fTipo" required maxlength="120" />
-            </div>
-            <div class="col-md-3">
-              <label class="form-label" for="fCantidad">Cantidad</label>
-              <input class="form-control" id="fCantidad" type="number" min="1" step="1" value="1" required />
-            </div>
-            <div class="col-md-3">
-              <label class="form-label" for="fAccion">Acción</label>
-              <select class="form-select" id="fAccion" required>
-                <option value="">—</option>
-                <option value="Anulación">Anulación</option>
-                <option value="Eliminación">Eliminación</option>
-              </select>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label" for="fNumero">Número de documento</label>
-              <input class="form-control" id="fNumero" required maxlength="120" />
-            </div>
-            <div class="col-md-3">
-              <label class="form-label" for="fMes">Mes</label>
-              <select class="form-select" id="fMes" required></select>
-            </div>
-            <div class="col-md-3">
-              <label class="form-label" for="fAnio">Año</label>
-              <select class="form-select" id="fAnio" required></select>
-            </div>
-            <div class="col-12">
-              <label class="form-label" for="fMotivo">Motivo</label>
-              <textarea class="form-control" id="fMotivo" rows="2" maxlength="500"></textarea>
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+      <form class="modal-content glass-modal siimed-form-modal" id="docForm">
+        <div class="modal-header siimed-form-header">
+          <div class="siimed-form-heading">
+            <img src="{{ url_for('static', filename='img/siimed-logo.svg') }}" alt="" width="96" height="26" />
+            <div>
+              <h2 class="modal-title" id="modalTitle">Nuevo registro</h2>
+              <p class="siimed-form-sub">Anulación o eliminación de documentos Siimed</p>
             </div>
           </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         </div>
-        <div class="modal-footer">
+        <div class="modal-body siimed-form-body">
+          <div id="formAlert" class="form-alert d-none" role="alert"></div>
+          <input type="hidden" id="docId" />
+
+          <section class="form-section">
+            <h3 class="form-section-title">Organización</h3>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label" for="fDepartamento">Departamento</label>
+                <select class="form-select form-select-lg siimed-select" id="fDepartamento" required>
+                  <option value="">Selecciona departamento…</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="fArea">Área</label>
+                <select class="form-select form-select-lg siimed-select" id="fArea" required>
+                  <option value="">Selecciona área…</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <section class="form-section">
+            <h3 class="form-section-title">Documento</h3>
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label" for="fTipo">Tipo de documento</label>
+                <select class="form-select form-select-lg siimed-select" id="fTipo" required>
+                  <option value="">Selecciona tipo…</option>
+                </select>
+              </div>
+              <div class="col-md-5">
+                <label class="form-label" for="fNumero">Número de documento</label>
+                <input
+                  class="form-control form-control-lg siimed-input-num"
+                  id="fNumero"
+                  required
+                  maxlength="120"
+                  placeholder="Ej. 12345"
+                  inputmode="text"
+                  autocomplete="off"
+                />
+              </div>
+              <div class="col-md-3">
+                <label class="form-label" for="fCantidad">Cantidad</label>
+                <input class="form-control form-control-lg" id="fCantidad" type="number" min="1" step="1" value="1" required />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" for="fAccion">Acción</label>
+                <select class="form-select form-select-lg siimed-select" id="fAccion" required>
+                  <option value="">Selecciona acción…</option>
+                  <option value="Anulación">Anulación</option>
+                  <option value="Eliminación">Eliminación</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <section class="form-section">
+            <h3 class="form-section-title">Periodo y motivo</h3>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label" for="fMes">Mes</label>
+                <select class="form-select form-select-lg siimed-select" id="fMes" required></select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" for="fAnio">Año</label>
+                <select class="form-select form-select-lg siimed-select" id="fAnio" required></select>
+              </div>
+              <div class="col-12">
+                <label class="form-label" for="fMotivo">Motivo</label>
+                <textarea class="form-control siimed-textarea" id="fMotivo" rows="3" maxlength="500" placeholder="Describe el motivo de la anulación o eliminación…"></textarea>
+              </div>
+            </div>
+          </section>
+        </div>
+        <div class="modal-footer siimed-form-footer">
           <button type="button" class="btn-ghost" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn-blue">Guardar</button>
+          <button type="submit" class="btn-lime btn-save">Guardar registro</button>
         </div>
       </form>
     </div>
