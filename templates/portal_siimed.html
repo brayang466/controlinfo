@@ -39,27 +39,12 @@
     <section class="siimed-panel">
       <div class="siimed-titlebar">ANULACIÓN O ELIMINACIÓN DE DOCUMENTOS SIIMED</div>
       <div class="siimed-meta">
-        <span id="resumenMes">Cargando…</span>
-        <span id="statusBar" role="status"></span>
+        <div class="siimed-stats">
+          <span class="stat-pill" id="resumenMes">Cargando…</span>
+          <span class="stat-pill soft" id="statusBar" role="status"></span>
+        </div>
       </div>
-      <div class="siimed-table-wrap">
-        <table class="siimed-table" aria-label="Registros Siimed del mes">
-          <thead>
-            <tr>
-              <th>Departamento</th>
-              <th>Área</th>
-              <th>Tipo de documento</th>
-              <th>Cantidad</th>
-              <th>Número de documento</th>
-              <th>Acción</th>
-              <th>Mes</th>
-              <th>Motivo</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="tableBody"></tbody>
-        </table>
-      </div>
+      <div id="cardsList" class="siimed-cards" aria-label="Registros Siimed del mes"></div>
       <div id="emptyState" class="siimed-empty d-none">
         No hay registros para este mes. Usa <strong>+ Nuevo registro</strong> para digitarlos.
       </div>
@@ -104,29 +89,62 @@
           <section class="form-section">
             <h3 class="form-section-title">Documento</h3>
             <div class="row g-3">
-              <div class="col-12">
-                <label class="form-label" for="fTipo">Tipo de documento</label>
+              <div class="col-md-7">
+                <label class="form-label" for="fTipo">Tipo de documento (letra)</label>
                 <select class="form-select form-select-lg siimed-select" id="fTipo" required>
                   <option value="">Selecciona tipo…</option>
                 </select>
               </div>
               <div class="col-md-5">
-                <label class="form-label" for="fNumero">Número de documento</label>
+                <label class="form-label" for="fTipoConsec">Consecutivo (#)</label>
+                <div class="tipo-combo">
+                  <span class="tipo-letra" id="tipoLetraPreview">—</span>
+                  <input
+                    class="form-control form-control-lg siimed-input-num"
+                    id="fTipoConsec"
+                    type="number"
+                    min="1"
+                    step="1"
+                    required
+                    placeholder="Ej. 1"
+                    inputmode="numeric"
+                  />
+                  <span class="tipo-resultado" id="tipoResultadoPreview" title="Código que se guardará">—</span>
+                </div>
+                <small class="form-hint">Se guarda como letra + número (ej. L1, F2, G3)</small>
+              </div>
+              <div class="col-md-8">
+                <label class="form-label" for="fNumero">Número / rango de documento</label>
                 <input
                   class="form-control form-control-lg siimed-input-num"
                   id="fNumero"
                   required
-                  maxlength="120"
-                  placeholder="Ej. 12345"
-                  inputmode="text"
+                  maxlength="200"
+                  placeholder="Ej. 100 | 100-105 | 11-13, 142, 153"
+                  inputmode="numeric"
                   autocomplete="off"
+                  pattern="[0-9\s,\-–—]+"
+                  title="Solo números, comas y guiones para rangos"
                 />
-              </div>
-              <div class="col-md-3">
-                <label class="form-label" for="fCantidad">Cantidad</label>
-                <input class="form-control form-control-lg" id="fCantidad" type="number" min="1" step="1" value="1" required />
+                <small class="form-hint">
+                  Solo numérico. Uno: <strong>100</strong> · Rango: <strong>100-105</strong> · Varios: <strong>11-13, 142, 153</strong>
+                </small>
               </div>
               <div class="col-md-4">
+                <label class="form-label" for="fCantidad">Cantidad (automática)</label>
+                <input
+                  class="form-control form-control-lg cantidad-auto"
+                  id="fCantidad"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value="1"
+                  required
+                  readonly
+                  tabindex="-1"
+                />
+              </div>
+              <div class="col-md-12">
                 <label class="form-label" for="fAccion">Acción</label>
                 <select class="form-select form-select-lg siimed-select" id="fAccion" required>
                   <option value="">Selecciona acción…</option>

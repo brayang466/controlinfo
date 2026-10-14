@@ -49,7 +49,7 @@
   const btnFiltrar = document.getElementById("btnFiltrar");
   const btnNuevo = document.getElementById("btnNuevo");
   const statusBar = document.getElementById("statusBar");
-  const tableBody = document.getElementById("tableBody");
+  const cardsList = document.getElementById("cardsList");
   const emptyState = document.getElementById("emptyState");
   const resumenMes = document.getElementById("resumenMes");
   const form = document.getElementById("docForm");
@@ -62,6 +62,7 @@
     departamento: document.getElementById("fDepartamento"),
     area: document.getElementById("fArea"),
     tipo_documento: document.getElementById("fTipo"),
+    tipo_consec: document.getElementById("fTipoConsec"),
     cantidad: document.getElementById("fCantidad"),
     numero_documento: document.getElementById("fNumero"),
     accion: document.getElementById("fAccion"),
@@ -69,6 +70,8 @@
     anio: document.getElementById("fAnio"),
     motivo: document.getElementById("fMotivo"),
   };
+  const tipoLetraPreview = document.getElementById("tipoLetraPreview");
+  const tipoResultadoPreview = document.getElementById("tipoResultadoPreview");
 
   const modal = new bootstrap.Modal(document.getElementById("docModal"));
   let rows = [];
@@ -127,11 +130,135 @@
         opt.value = item;
         opt.textContent = item;
       } else {
-        opt.value = etiquetaTipo(item);
+        // value = solo la letra/código; texto = código + nombre
+        opt.value = item.codigo;
         opt.textContent = etiquetaTipo(item);
       }
       select.appendChild(opt);
     }
+  }
+
+  function codigoTipoCompleto() {
+    const letra = String(fields.tipo_documento.value || "").trim().toUpperCase();
+    const n = String(fields.tipo_consec.value || "").trim();
+    if (!letra || !n) return "";
+    return `${letra}${n}`;
+  }
+
+  function actualizarPreviewTipo() {
+    const letra = String(fields.tipo_documento.value || "").trim().toUpperCase() || "—";
+    const full = codigoTipoCompleto() || "—";
+    if (tipoLetraPreview) tipoLetraPreview.textContent = letra;
+    if (tipoResultadoPreview) tipoResultadoPreview.textContent = full;
+  }
+
+  function expandirRangoNumeros(inicio, fin) {
+    const a = Number(inicio);
+    const b = Number(fin);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return [];
+    const from = Math.min(a, b);
+    const to = Math.max(a, b);
+    if (to - from > 50000) return null; // tipazo / rango absurdo
+    const out = [];
+    for (let n = from; n <= to; n += 1) out.push(n);
+    return out;
+  }
+
+  function numerosDeSegmento(seg) {
+    const t = String(seg || "").trim();
+    if (!t) return [];
+
+    let m = t.match(/(\d+)\s*(?:a\s*la|al|hasta)\s*(\d+)/i);
+    if (m) return expandirRangoNumeros(m[1], m[2]);
+
+    m = t.match(/(\d+)\s*[-–—]\s*(\d+)/);
+    if (m) {
+      const a = Number(m[1]);
+      const b = Number(m[2]);
+      // cadena 700-701-702: si hay más de un guion, tomar todos los dígitos
+      const all = t.match(/\d+/g) || [];
+      if (all.length > 2) {
+        const nums = all.map(Number);
+        const consec = nums.every((n, i) => i === 0 || n === nums[i - 1] + 1);
+        if (consec) return nums;
+      }
+      return expandirRangoNumeros(a, b);
+    }
+
+    m = t.match(/(\d+)/);
+    if (m) return [Number(m[1])];
+    return [];
+  }
+
+  function calcularCantidadDesdeNumero(texto) {
+    const raw = String(texto || "").trim();
+    if (!raw) return 0;
+
+    const segmentos = raw.split(/\s*,\s*|\s+y\s+/i).filter(Boolean);
+    const set = new Set();
+    for (const seg of segmentos) {
+      const nums = numerosDeSegmento(seg);
+      if (nums === null) return -1;
+      nums.forEach((n) => set.add(n));
+    }
+    return set.size;
+  }
+
+  function sanitizarNumeroDocumento(texto) {
+    // Solo dígitos, espacios, comas y guiones (rangos). Sin letras.
+    return String(texto || "").replace(/[^0-9\s,\-–—]/g, "");
+  }
+
+  function actualizarCantidadAutomatica() {
+    const limpio = sanitizarNumeroDocumento(fields.numero_documento.value);
+    if (limpio !== fields.numero_documento.value) {
+      const pos = fields.numero_documento.selectionStart;
+      fields.numero_documento.value = limpio;
+      try {
+        fields.numero_documento.setSelectionRange(Math.max(0, pos - 1), Math.max(0, pos - 1));
+      } catch (_) {
+        /* ignore */
+      }
+    }
+    const texto = fields.numero_documento.value;
+    const n = calcularCantidadDesdeNumero(texto);
+    fields.cantidad.classList.remove("is-invalid");
+    if (!String(texto || "").trim()) {
+      fields.cantidad.value = "0";
+      return true;
+    }
+    if (n < 0) {
+      fields.cantidad.value = "";
+      fields.cantidad.classList.add("is-invalid");
+      return false;
+    }
+    if (n === 0) {
+      fields.cantidad.value = "1";
+      return true;
+    }
+    fields.cantidad.value = String(n);
+    return true;
+  }
+
+  function parseTipoDocumento(raw) {
+    const v = String(raw || "").trim();
+    if (!v) return { codigo: "", consecutivo: "" };
+    const first = v.split(",")[0].trim();
+    const codes = TIPOS_DOCUMENTO.map((t) => t.codigo).sort(
+      (a, b) => b.length - a.length
+    );
+    for (const c of codes) {
+      const up = first.toUpperCase();
+      if (up.startsWith(c.toUpperCase())) {
+        const rest = first.slice(c.length);
+        if (rest === "" || /^\d+$/.test(rest)) {
+          return { codigo: c, consecutivo: rest };
+        }
+      }
+    }
+    const m = first.match(/^([A-Za-z]+)(\d+)$/);
+    if (m) return { codigo: m[1].toUpperCase(), consecutivo: m[2] };
+    return { codigo: "", consecutivo: "", crudo: v };
   }
 
   function asegurarOpcion(select, value) {
@@ -186,6 +313,7 @@
     fillSelect(fields.departamento, DEPARTAMENTOS, "Selecciona departamento…");
     fillSelect(fields.area, AREAS, "Selecciona área…");
     fillSelect(fields.tipo_documento, TIPOS_DOCUMENTO, "Selecciona tipo…");
+    actualizarPreviewTipo();
   }
 
   async function api(url, options = {}) {
@@ -198,8 +326,15 @@
     return data;
   }
 
+  function claseAccion(accion) {
+    const a = String(accion || "").toLowerCase();
+    if (a.includes("anul")) return "accion-anular";
+    if (a.includes("elim")) return "accion-eliminar";
+    return "accion-otra";
+  }
+
   function renderTabla() {
-    tableBody.innerHTML = "";
+    cardsList.innerHTML = "";
     if (!rows.length) {
       emptyState.classList.remove("d-none");
       resumenMes.textContent = "Sin registros en este mes";
@@ -210,22 +345,35 @@
     resumenMes.textContent = `${rows.length} registro(s) · ${totalCant} documento(s)`;
 
     for (const r of rows) {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${escapar(r.departamento)}</td>
-        <td>${escapar(r.area)}</td>
-        <td>${escapar(r.tipo_documento)}</td>
-        <td class="num">${escapar(r.cantidad)}</td>
-        <td>${escapar(r.numero_documento)}</td>
-        <td><span class="chip">${escapar(r.accion)}</span></td>
-        <td>${escapar(MESES[r.mes] || r.mes)}</td>
-        <td class="motivo">${escapar(r.motivo || "—")}</td>
-        <td class="acciones">
+      const card = document.createElement("article");
+      card.className = `siimed-card ${claseAccion(r.accion)}`;
+      card.innerHTML = `
+        <div class="card-top">
+          <div class="card-badges">
+            <span class="chip tipo">${escapar(r.tipo_documento)}</span>
+            <span class="chip accion ${claseAccion(r.accion)}">${escapar(r.accion)}</span>
+            <span class="chip soft">${escapar(MESES[r.mes] || r.mes)}</span>
+          </div>
+          <div class="card-qty" title="Cantidad">
+            <strong>${escapar(r.cantidad)}</strong>
+            <small>doc.</small>
+          </div>
+        </div>
+        <div class="card-main">
+          <h3 class="card-doc">${escapar(r.numero_documento)}</h3>
+          <p class="card-org">
+            <span>${escapar(r.departamento)}</span>
+            <span class="dot">·</span>
+            <span>${escapar(r.area)}</span>
+          </p>
+        </div>
+        <p class="card-motivo">${escapar(r.motivo || "Sin motivo registrado")}</p>
+        <div class="card-actions">
           <button type="button" class="btn-mini" data-edit="${r.id}">Editar</button>
           <button type="button" class="btn-mini danger" data-del="${r.id}">Eliminar</button>
-        </td>
+        </div>
       `;
-      tableBody.appendChild(tr);
+      cardsList.appendChild(card);
     }
   }
 
@@ -254,9 +402,12 @@
     fillSelect(fields.departamento, DEPARTAMENTOS, "Selecciona departamento…");
     fillSelect(fields.area, AREAS, "Selecciona área…");
     fillSelect(fields.tipo_documento, TIPOS_DOCUMENTO, "Selecciona tipo…");
-    fields.cantidad.value = "1";
+    fields.cantidad.value = "0";
+    fields.tipo_consec.value = "";
     fields.anio.value = String(anio);
     fields.mes.value = String(mes);
+    actualizarPreviewTipo();
+    actualizarCantidadAutomatica();
     modal.show();
   }
 
@@ -271,25 +422,44 @@
     fillSelect(fields.tipo_documento, TIPOS_DOCUMENTO, "Selecciona tipo…");
     asegurarOpcion(fields.departamento, r.departamento);
     asegurarOpcion(fields.area, r.area);
-    asegurarOpcion(fields.tipo_documento, r.tipo_documento);
-    fields.cantidad.value = String(r.cantidad ?? 1);
+    const parsed = parseTipoDocumento(r.tipo_documento);
+    if (parsed.codigo) {
+      asegurarOpcion(fields.tipo_documento, parsed.codigo);
+      fields.tipo_consec.value = parsed.consecutivo || "";
+    } else if (parsed.crudo) {
+      // valor libre (ej. varios tipos): se muestra en resultado
+      fields.tipo_documento.value = "";
+      fields.tipo_consec.value = "";
+      if (tipoResultadoPreview) tipoResultadoPreview.textContent = parsed.crudo;
+    }
     fields.numero_documento.value = r.numero_documento || "";
     fields.accion.value = r.accion || "";
     fields.mes.value = String(r.mes);
     fields.anio.value = String(r.anio);
     fields.motivo.value = r.motivo || "";
+    actualizarPreviewTipo();
+    actualizarCantidadAutomatica();
+    // si el texto no se puede recalcular, conserva la cantidad guardada
+    if (!fields.cantidad.value || fields.cantidad.value === "0") {
+      fields.cantidad.value = String(r.cantidad ?? 1);
+    }
+    if (parsed.crudo && tipoResultadoPreview) {
+      tipoResultadoPreview.textContent = parsed.crudo;
+    }
     modal.show();
   }
 
   async function guardar(event) {
     event.preventDefault();
     clearFormAlert();
+    const tipoCompleto = codigoTipoCompleto();
+    actualizarCantidadAutomatica();
     const payload = {
       departamento: fields.departamento.value.trim(),
       area: fields.area.value.trim(),
-      tipo_documento: fields.tipo_documento.value.trim(),
+      tipo_documento: tipoCompleto,
       cantidad: Number(fields.cantidad.value),
-      numero_documento: fields.numero_documento.value.trim(),
+      numero_documento: sanitizarNumeroDocumento(fields.numero_documento.value).trim(),
       accion: fields.accion.value.trim(),
       mes: Number(fields.mes.value),
       anio: Number(fields.anio.value),
@@ -298,15 +468,22 @@
     if (
       !payload.departamento ||
       !payload.area ||
+      !fields.tipo_documento.value.trim() ||
+      !fields.tipo_consec.value.trim() ||
       !payload.tipo_documento ||
       !payload.numero_documento ||
       !payload.accion
     ) {
-      showFormAlert("Completa los campos obligatorios.");
+      showFormAlert("Completa los campos obligatorios (incluye letra y consecutivo del tipo).");
       return;
     }
+    if (!actualizarCantidadAutomatica()) {
+      showFormAlert("El rango de documentos es demasiado grande o inválido.");
+      return;
+    }
+    payload.cantidad = Number(fields.cantidad.value);
     if (!payload.cantidad || payload.cantidad < 1) {
-      showFormAlert("La cantidad debe ser al menos 1.");
+      showFormAlert("Indica al menos un número o rango de documento válido.");
       return;
     }
     try {
@@ -345,7 +522,7 @@
     }
   }
 
-  tableBody.addEventListener("click", (event) => {
+  cardsList.addEventListener("click", (event) => {
     const edit = event.target.closest("[data-edit]");
     const del = event.target.closest("[data-del]");
     if (edit) abrirEditar(edit.getAttribute("data-edit"));
@@ -357,6 +534,9 @@
   mesSelect.addEventListener("change", cargar);
   btnNuevo.addEventListener("click", abrirNuevo);
   form.addEventListener("submit", guardar);
+  fields.tipo_documento.addEventListener("change", actualizarPreviewTipo);
+  fields.tipo_consec.addEventListener("input", actualizarPreviewTipo);
+  fields.numero_documento.addEventListener("input", actualizarCantidadAutomatica);
 
   poblarSelectores();
   cargar();

@@ -1102,12 +1102,131 @@ body.role-readonly .week-cell.editable:hover {
 @media (max-width: 720px) {
   :root {
     --cell-w: 86px;
-    --label-w: 140px;
+    --label-w: 132px;
   }
-  .brand-title { font-size: 1.15rem; }
-  .sheet { font-size: 0.8rem; }
-  .asig-row { grid-template-columns: 1fr; }
-  .exc-row { grid-template-columns: 1fr; }
-  .week-cell.sabado { min-width: 140px; }
-  .sheet-scroll { max-height: calc(100vh - 11rem); }
+
+  .app-shell {
+    padding: 0.55rem;
+    gap: 0.55rem;
+  }
+
+  .hero-bar {
+    padding: 0.75rem;
+    border-radius: 16px;
+    gap: 0.7rem;
+  }
+
+  .brand-title {
+    font-size: 1.08rem;
+  }
+
+  .brand-kicker {
+    font-size: 0.64rem;
+  }
+
+  .controls {
+    width: 100%;
+    gap: 0.45rem;
+  }
+
+  .ctrl {
+    flex: 1 1 calc(50% - 0.45rem);
+    min-width: 0;
+  }
+
+  .ctrl select {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .controls .btn-solid,
+  .controls .btn-ghost,
+  .controls .btn-whatsapp {
+    flex: 1 1 calc(50% - 0.45rem);
+    justify-content: center;
+    min-height: 2.45rem;
+    text-align: center;
+  }
+
+  .user-chip {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .status {
+    width: 100%;
+    font-size: 0.78rem;
+  }
+
+  .scroll-hint {
+    font-size: 0.78rem;
+    margin: 0 0.15rem;
+  }
+
+  .sheet {
+    font-size: 0.78rem;
+  }
+
+  .sheet thead th.day-head {
+    font-size: 0.68rem;
+    padding: 0.4rem 0.2rem;
+  }
+
+  .sheet thead th.day-head .day-festivo-tag {
+    font-size: 0.55rem;
+    padding: 0.05rem 0.28rem;
+  }
+
+  .asig-row,
+  .exc-row {
+    grid-template-columns: 1fr;
+  }
+
+  .week-cell.sabado {
+    min-width: 140px;
+  }
+
+  .sheet-scroll {
+    max-height: calc(100vh - 12.5rem);
+    border-radius: 14px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sheet-panel {
+    border-radius: 14px;
+  }
+
+  .glass-modal .modal-dialog {
+    margin: 0.5rem;
+  }
+
+  .modal-footer {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .modal-footer .btn-solid,
+  .modal-footer .btn-ghost,
+  .modal-footer .btn-whatsapp {
+    flex: 1 1 auto;
+    min-height: 2.45rem;
+  }
+
+  .ui-toast-host {
+    left: 0.65rem;
+    right: 0.65rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .controls .btn-solid,
+  .controls .btn-ghost,
+  .controls .btn-whatsapp,
+  .ctrl {
+    flex: 1 1 100%;
+  }
+
+  .brand-title br {
+    display: none;
+  }
 }

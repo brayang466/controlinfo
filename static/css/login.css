@@ -228,3 +228,48 @@
   color: var(--muted);
   font-size: 0.85rem;
 }
+
+@media (max-width: 560px) {
+  .login-body {
+    padding: 0.75rem;
+    align-items: flex-start;
+    padding-top: 1.25rem;
+  }
+
+  .login-shell {
+    width: 100%;
+  }
+
+  .login-card {
+    padding: 1.2rem 1rem 1.1rem;
+    border-radius: 18px;
+  }
+
+  .login-brand h1 {
+    font-size: 1.45rem;
+  }
+
+  .user-pick {
+    grid-template-columns: auto 1fr;
+    gap: 0.7rem;
+  }
+
+  .user-pick-action {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .siimed-portal-btn {
+    grid-template-columns: 1fr auto;
+    gap: 0.55rem 0.7rem;
+  }
+
+  .siimed-portal-logo {
+    grid-column: 1 / -1;
+    width: 120px;
+  }
+
+  .siimed-portal-text small {
+    white-space: normal;
+  }
+}
