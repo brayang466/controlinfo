@@ -1502,10 +1502,31 @@
     return String(semana.responsable_proceso || "").trim().toUpperCase();
   }
 
+  const FRASES_MOTIVADORAS_PROCESO = [
+    "¡Misión cumplida! Otro proceso cerrado con excelencia.",
+    "¡Lo logramos! Trabajo en equipo que se nota.",
+    "Proceso terminado: constancia + disciplina = resultado.",
+    "¡Excelente jornada! Cada cierre sin novedad suma.",
+    "¡Hecho! Hoy el proceso salió como debía.",
+    "Cierre limpio, equipo enfocado. ¡Así se trabaja!",
+    "¡Orgullo de planta! Proceso finalizado sin contratiempos.",
+    "Un día más, un proceso más… ¡y bien hecho!",
+    "¡Éxito compartido! Gracias al equipo por el compromiso.",
+    "Meta alcanzada. Mañana seguimos con la misma energía.",
+    "Sin novedad, con calidad. ¡Eso es profesionalismo!",
+    "¡Victoria del día! Proceso de beneficio cerrado correctamente.",
+  ];
+
+  function elegirAlAzar(lista) {
+    if (!lista || !lista.length) return "";
+    return lista[Math.floor(Math.random() * lista.length)];
+  }
+
   function construirMensajeProcesoSinNovedad(ahora = new Date()) {
     const fechaIso = hoyIsoLocal();
     const responsable = responsableProcesoParaFecha(fechaIso);
     const semana = semanaPorFecha(fechaIso);
+    const frase = elegirAlAzar(FRASES_MOTIVADORAS_PROCESO);
     const lineas = [
       saludoSegunHora(ahora),
       "",
@@ -1523,9 +1544,11 @@
       `*Enviado por:* ${responsable || "(sin responsable asignado)"}`,
       "_Responsable del proceso (Horarios del personal)_",
       "",
+      `💪 ${frase}`,
+      "",
       "Gracias"
     );
-    return { mensaje: lineas.join("\n"), responsable, fechaIso, semana };
+    return { mensaje: lineas.join("\n"), responsable, fechaIso, semana, frase };
   }
 
   function enviarProcesoSinNovedadWhatsApp() {
