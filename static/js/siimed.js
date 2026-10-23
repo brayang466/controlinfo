@@ -42,6 +42,7 @@
     { codigo: "S", nombre: "Nota de Remisión" },
     { codigo: "T", nombre: "Nota de Traslado" },
     { codigo: "U", nombre: "Devolución de Compra" },
+    { codigo: "Y", nombre: "Orden de Compra" },
   ];
 
   const anioSelect = document.getElementById("anioSelect");
