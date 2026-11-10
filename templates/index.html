@@ -213,13 +213,6 @@
                 <button type="button" id="btnAddAsignacionSabado" class="btn-ghost mt-2 mb-3">+ Agregar (sábado)</button>
               </div>
 
-              <h3 class="section-label">Enviar a grupo de WhatsApp</h3>
-              <div class="wa-send-row">
-                <p class="hint-line mb-0">
-                  Se abrirá WhatsApp con el saludo según la hora y el contenido de horarios.
-                  Elige el <strong>grupo</strong> y pulsa Enviar. No se usa un número individual.
-                </p>
-              </div>
             </div>
 
             <div class="tab-pane fade" id="panelExcepciones" role="tabpanel">
@@ -229,6 +222,23 @@
               <div id="excepcionesList" class="excepciones-list"></div>
               <button type="button" id="btnAddExcepcion" class="btn-ghost mt-2">+ Agregar excepción</button>
             </div>
+          </div>
+
+          <h3 class="section-label">Enviar a grupo de WhatsApp</h3>
+          <div class="wa-send-row">
+            <p class="hint-line mb-0">
+              Se abrirá WhatsApp con el saludo según la hora y el contenido de horarios.
+              Elige el <strong>grupo</strong> y pulsa Enviar. No se usa un número individual.
+            </p>
+            <label class="section-label" for="waObservaciones">Observaciones</label>
+            <textarea
+              class="form-control"
+              id="waObservaciones"
+              rows="3"
+              maxlength="500"
+              placeholder="Escríbelas si las hay"
+            ></textarea>
+            <p class="hint-line mb-0">Si lo dejas vacío, el mensaje dirá: No hay observaciones.</p>
           </div>
         </div>
         <div class="modal-footer">
@@ -321,6 +331,37 @@
           <button type="button" class="btn-solid" id="uiAlertOk">Entendido</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="obsProcesoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <form class="modal-content glass-modal" id="obsProcesoForm" novalidate>
+        <div class="modal-header">
+          <div>
+            <h2 class="modal-title">Proceso sin novedad</h2>
+            <p class="modal-sub">Agrega observaciones si las hay antes de abrir WhatsApp</p>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="wa-send-row">
+            <label class="section-label" for="obsProcesoTexto">Observaciones</label>
+            <textarea
+              class="form-control"
+              id="obsProcesoTexto"
+              rows="3"
+              maxlength="500"
+              placeholder="Escríbelas si las hay"
+            ></textarea>
+            <p class="hint-line mb-0">Si lo dejas vacío, el mensaje dirá: No hay observaciones.</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn-whatsapp">Enviar a grupo WhatsApp</button>
+        </div>
+      </form>
     </div>
   </div>
 

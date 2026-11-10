@@ -42,6 +42,9 @@
   const btnAddAsignacionSabado = document.getElementById("btnAddAsignacionSabado");
   const btnAddExcepcion = document.getElementById("btnAddExcepcion");
   const btnEnviarWhatsApp = document.getElementById("btnEnviarWhatsApp");
+  const waObservaciones = document.getElementById("waObservaciones");
+  const obsProcesoTexto = document.getElementById("obsProcesoTexto");
+  const obsProcesoForm = document.getElementById("obsProcesoForm");
   const btnCopiarSemana = document.getElementById("btnCopiarSemana");
   const btnPegarSemana = document.getElementById("btnPegarSemana");
   const semanaClipboardMeta = document.getElementById("semanaClipboardMeta");
@@ -72,6 +75,7 @@
   const nuevoTurInicio = document.getElementById("nuevoTurInicio");
   const nuevoTurFin = document.getElementById("nuevoTurFin");
 
+  const modalObsProceso = new bootstrap.Modal(document.getElementById("obsProcesoModal"));
   const modalDia = new bootstrap.Modal(document.getElementById("editModal"));
   const modalSemana = new bootstrap.Modal(document.getElementById("semanaModal"));
   const modalCatalogo = new bootstrap.Modal(document.getElementById("catalogoModal"));
@@ -1400,6 +1404,12 @@
     return rango;
   }
 
+  function bloqueObservaciones(texto) {
+    const limpio = String(texto || "").trim();
+    if (!limpio) return "*Observaciones:* No hay observaciones";
+    return "*Observaciones:*\n" + limpio;
+  }
+
   function construirMensajeHorariosWhatsApp() {
     const lunVie = leerAsignacionesTexto(asignacionesList);
     const sabado = leerAsignacionesTexto(asignacionesSabadoList);
@@ -1434,6 +1444,10 @@
     if (responsable) {
       lineas.push("", "*Responsable del proceso:* " + responsable);
     }
+    lineas.push(
+      "",
+      bloqueObservaciones(waObservaciones ? waObservaciones.value : "")
+    );
     lineas.push("", "Gracias");
     return lineas.join("\n");
   }
@@ -1522,7 +1536,7 @@
     return lista[Math.floor(Math.random() * lista.length)];
   }
 
-  function construirMensajeProcesoSinNovedad(ahora = new Date()) {
+  function construirMensajeProcesoSinNovedad(ahora = new Date(), observaciones = "") {
     const fechaIso = hoyIsoLocal();
     const responsable = responsableProcesoParaFecha(fechaIso);
     const semana = semanaPorFecha(fechaIso);
@@ -1544,6 +1558,8 @@
       `*Enviado por:* ${responsable || "(sin responsable asignado)"}`,
       "_Responsable del proceso (Horarios del personal)_",
       "",
+      bloqueObservaciones(observaciones),
+      "",
       `💪 ${frase}`,
       "",
       "Gracias"
@@ -1551,27 +1567,47 @@
     return { mensaje: lineas.join("\n"), responsable, fechaIso, semana, frase };
   }
 
-  function enviarProcesoSinNovedadWhatsApp() {
-    const ahora = new Date();
-    const { mensaje, responsable, fechaIso, semana } =
-      construirMensajeProcesoSinNovedad(ahora);
-
+  function validarProcesoSinNovedad() {
+    const fechaIso = hoyIsoLocal();
+    const responsable = responsableProcesoParaFecha(fechaIso);
+    const semana = semanaPorFecha(fechaIso);
     if (!semana) {
       const msg =
         "No hay datos de la semana actual en el mes cargado. Cambia al mes de hoy y pulsa Actualizar.";
       mostrarToast(msg, "warn", "Sin semana");
       setStatus(msg, true);
-      return;
+      return false;
     }
     if (!responsable) {
       const msg =
         "No hay responsable del proceso en Horarios del personal para hoy (turno Planta).";
       mostrarToast(msg, "warn", "Falta responsable");
       setStatus(msg, true);
+      return false;
+    }
+    return true;
+  }
+
+  function enviarProcesoSinNovedadWhatsApp() {
+    if (!validarProcesoSinNovedad()) return;
+    if (obsProcesoTexto) obsProcesoTexto.value = "";
+    modalObsProceso.show();
+    window.setTimeout(() => obsProcesoTexto && obsProcesoTexto.focus(), 250);
+  }
+
+  function confirmarProcesoSinNovedadWhatsApp(event) {
+    event.preventDefault();
+    if (!validarProcesoSinNovedad()) {
+      modalObsProceso.hide();
       return;
     }
-
+    const ahora = new Date();
+    const { mensaje, responsable, fechaIso } = construirMensajeProcesoSinNovedad(
+      ahora,
+      obsProcesoTexto ? obsProcesoTexto.value : ""
+    );
     const url = "https://wa.me/?text=" + encodeURIComponent(mensaje);
+    modalObsProceso.hide();
     window.open(url, "_blank", "noopener,noreferrer");
     mostrarToast(
       `WhatsApp abierto · confirmación de ${responsable}`,
@@ -1613,6 +1649,7 @@
     asignacionesList.innerHTML = "";
     asignacionesSabadoList.innerHTML = "";
     excepcionesList.innerHTML = "";
+    if (waObservaciones) waObservaciones.value = "";
 
     const itemsLv =
       (semana.asignaciones_lun_vie || semana.asignaciones || []).length
@@ -2115,6 +2152,9 @@
   });
   if (btnProcesoSinNovedad) {
     btnProcesoSinNovedad.addEventListener("click", enviarProcesoSinNovedadWhatsApp);
+  }
+  if (obsProcesoForm) {
+    obsProcesoForm.addEventListener("submit", confirmarProcesoSinNovedadWhatsApp);
   }
   mesSelect.addEventListener("change", cargarReporte);
 
